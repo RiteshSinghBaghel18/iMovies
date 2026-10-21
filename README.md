@@ -1,4 +1,4 @@
-# 🎬 iMovies — Movie Ticket Booking Platform
+## iMovies — Movie Ticket Booking Platform
 
 > *Your ultimate destination for the latest blockbusters and timeless classics*
 
@@ -6,7 +6,7 @@ A full-stack, production-ready Movie Ticket Booking Web Application built with t
 
 ---
 
-## 🗂️ Project Structure
+##  Project Structure
 
 ```
 iMovies/
@@ -21,7 +21,7 @@ iMovies/
 │   │   │   ├── Home.jsx            # Movie catalog with search & filters
 │   │   │   ├── MovieDetails.jsx    # Movie info, cast, reviews, favorites
 │   │   │   ├── MovieShows.jsx      # Show listings with 7-day date picker
-│   │   │   ├── SeatSlug.jsx        # 🔥 Real-time interactive seat map
+│   │   │   ├── SeatSlug.jsx        # Real-time interactive seat map
 │   │   │   ├── Bookings.jsx        # Digital ticket history
 │   │   │   ├── FavoriteShows.jsx   # User watchlist
 │   │   │   ├── Profile.jsx         # Account dashboard & stats
@@ -77,7 +77,7 @@ iMovies/
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -134,7 +134,7 @@ http://localhost:5173
 
 ---
 
-## 🔐 Authentication
+##  Authentication
 
 | Role | Register At | Login At | Redirects To |
 |------|------------|----------|--------------|
@@ -145,7 +145,7 @@ JWT tokens are stored in `localStorage` with key `imovies-token`.
 
 ---
 
-## 🌐 API Endpoints
+## API Endpoints
 
 ### Auth — `/api/auth`
 | Method | Endpoint | Auth | Description |
@@ -211,7 +211,7 @@ JWT tokens are stored in `localStorage` with key `imovies-token`.
 
 ---
 
-## 🎟️ Booking Flow
+## Booking Flow
 
 ```
 Register / Login
@@ -233,7 +233,7 @@ Digital Ticket (/bookings)  ← Email confirmation sent
 
 ---
 
-## ⚙️ Background Services
+## Background Services
 
 | Service | Schedule | Action |
 |---------|----------|--------|
@@ -242,7 +242,7 @@ Digital Ticket (/bookings)  ← Email confirmation sent
 
 ---
 
-## 🎨 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -260,19 +260,4 @@ Digital Ticket (/bookings)  ← Email confirmation sent
 
 ---
 
-## 🛠️ MongoDB Atlas Setup (Alternative to Local)
-
-1. Create a free cluster at [cloud.mongodb.com](https://cloud.mongodb.com/)
-2. Create a database user with read/write access
-3. Whitelist your IP (`0.0.0.0/0` for development)
-4. Copy the connection string and set it as `MONGO_URI` in `server/.env`
-
----
-
-## 📁 Project Location
-
-```
-C:\Users\baghe\.gemini\antigravity\scratch\iMovies\
-```
-
-> 💡 **Tip**: Set this as your active workspace in the Antigravity IDE for the best development experience.
+> 
