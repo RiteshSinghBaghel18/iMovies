@@ -7,12 +7,25 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: 'http://localhost:5173', methods: ['GET', 'POST'] } });
+
+// CORS configuration: dynamically allow Vercel production frontends, localhost, and custom domains
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or any client origin
+    callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'X-Requested-With', 'Accept', 'Origin']
+};
+
+const io = new Server(server, { cors: corsOptions });
 
 // Export io early to avoid circular dependency issues when required in controllers
 module.exports = { io, app, server };
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // Routes
