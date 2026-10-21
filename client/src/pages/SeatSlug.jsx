@@ -5,7 +5,7 @@ import { io } from 'socket.io-client';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import Loader from '../components/Loader';
-import { api } from '../utils/api';
+import { api, API_URL } from '../utils/api';
 import { useTheme } from '../utils/ThemeContext';
 import dayjs from 'dayjs';
 
@@ -77,9 +77,9 @@ function SeatSlug() {
     // Preload Razorpay Checkout Script
     loadRazorpayScript();
 
-    // Socket.io connection
+    // Socket.io connection to backend
     try {
-      const socket = io('http://localhost:5000', {
+      const socket = io(API_URL || 'http://localhost:5000', {
         transports: ['websocket', 'polling'],
         reconnectionAttempts: 3,
       });
