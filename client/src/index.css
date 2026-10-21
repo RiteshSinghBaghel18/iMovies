@@ -1,0 +1,384 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Cinematic Theme CSS Variables ───────────────────────────── */
+:root, :root[data-theme="dark"], html.dark {
+  --bg-primary: #000000;
+  --bg-secondary: #09090b;
+  --bg-card: #121216;
+  --bg-card-hover: #1c1c23;
+  --bg-input: #0a0a0a;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border-color: #27272a;
+  --border-hover: rgba(255, 102, 0, 0.45);
+  --accent-orange: #ff6600;
+  --accent-orange-hover: #ff7700;
+  --accent-orange-glow: rgba(255, 102, 0, 0.35);
+  --header-bg: #000000;
+  --sidebar-bg: #09090b;
+  --scrollbar-track: #09090b;
+  --scrollbar-thumb: #ff6600;
+}
+
+:root[data-theme="light"], html.light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f5;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f4f4f5;
+  --bg-input: #ffffff;
+  --text-primary: #09090b;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --border-color: #e4e4e7;
+  --border-hover: rgba(255, 102, 0, 0.5);
+  --accent-orange: #ff6600;
+  --accent-orange-hover: #ff7700;
+  --accent-orange-glow: rgba(255, 102, 0, 0.25);
+  --header-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --scrollbar-track: #f4f4f5;
+  --scrollbar-thumb: #ff6600;
+}
+
+/* ── Base Styles ───────────────────────────────────── */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Scrollbar ─────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #ff7700; }
+
+/* ── Solid Surfaces (Glassmorphism Removed) ────────── */
+.glass-panel {
+  background: #121216;
+  border: 1px solid #27272a;
+}
+
+.glass-card {
+  background: #121216;
+  border: 1px solid #27272a;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
+}
+
+.glass-nav {
+  background: #000000;
+  border-bottom: 1px solid #27272a;
+}
+
+.glass-modal {
+  background: #0d0d11;
+  border: 1px solid #27272a;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9);
+}
+
+.orange-glow {
+  box-shadow: 0 0 25px rgba(255, 102, 0, 0.35);
+}
+
+.orange-glow-sm {
+  box-shadow: 0 0 12px rgba(255, 102, 0, 0.25);
+}
+
+/* ── Seat Map Styles with Vibrant Orange (Sharp Edge Rectangles) ── */
+.seat-available {
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 0px;
+}
+.seat-available:hover {
+  transform: scale(1.15);
+  background: #27272a;
+  border-color: #ff6600;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.4);
+}
+.seat-locked {
+  background: #27272a;
+  border: 1px dashed rgba(255, 102, 0, 0.6);
+  color: #ff6600;
+  cursor: not-allowed;
+  border-radius: 0px;
+}
+.seat-booked {
+  background: #09090b;
+  border: 1px solid #1f1f23;
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-radius: 0px;
+}
+.seat-selected {
+  background: #ff6600 !important;
+  border: 1px solid #ff7700 !important;
+  color: #000000 !important;
+  cursor: pointer;
+  transform: scale(1.15);
+  border-radius: 0px;
+  box-shadow: 0 0 14px rgba(255, 102, 0, 0.75);
+}
+
+/* ── Sharp Edge Rectangle Theme (Remove rounded rectangle boxes) ── */
+.rounded-3xl,
+.rounded-2xl,
+.rounded-xl,
+.rounded-lg,
+.rounded-md,
+.rounded {
+  border-radius: 0px !important;
+}
+
+button:not(.avatar),
+input,
+select,
+textarea,
+.glass-panel,
+.glass-card,
+.glass-nav,
+.glass-modal {
+  border-radius: 0px !important;
+}
+
+button.rounded-full,
+a.rounded-full,
+span.rounded-full {
+  border-radius: 0px !important;
+}
+
+/* ── Cinema Effects ────────────────────────────────── */
+.screen-curve {
+  border-top: 4px solid #ff6600;
+  border-radius: 50% 50% 0 0 / 20px 20px 0 0;
+  box-shadow: 0 -12px 25px -5px rgba(255, 102, 0, 0.45);
+}
+
+/* ── Netflix/Streaming-style card hover ─────────────── */
+.movie-card-hover {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
+}
+.movie-card-hover:hover {
+  transform: scale(1.04) translateY(-4px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(255, 102, 0, 0.15);
+  z-index: 10;
+}
+
+/* ── Light mode overrides (Every black turns to clean white) ──────────────────────────── */
+html.light,
+html.light body {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+/* Primary dark surface inversion -> Pure White */
+html.light .bg-\[\#000000\],
+html.light .bg-\[\#050508\],
+html.light .bg-\[\#070710\],
+html.light .bg-\[\#09090b\],
+html.light .bg-\[\#0a0a0f\],
+html.light .bg-\[\#0d0d18\],
+html.light .bg-black,
+html.light .bg-dark,
+html.light .bg-darker {
+  background-color: #ffffff !important;
+}
+
+/* Secondary dark surfaces & cards -> Clean White */
+html.light .bg-\[\#121216\],
+html.light .bg-\[\#0d0d11\],
+html.light .bg-\[\#111827\],
+html.light .bg-card,
+html.light .bg-zinc-950,
+html.light .bg-zinc-900,
+html.light .bg-gray-900 {
+  background-color: #ffffff !important;
+}
+
+/* Inputs & subtle nested blocks -> Soft light zinc */
+html.light .bg-\[\#0a0a0a\],
+html.light .bg-\[\#18181b\],
+html.light .bg-\[\#1c1c23\],
+html.light .bg-\[\#1f1f23\],
+html.light .bg-\[\#27272a\],
+html.light .bg-zinc-800,
+html.light .bg-gray-800 {
+  background-color: #f4f4f5 !important;
+}
+
+html.light .bg-zinc-700,
+html.light .bg-gray-700 {
+  background-color: #e4e4e7 !important;
+}
+
+/* Glass & Solid Panels */
+html.light .glass-panel,
+html.light .glass-card,
+html.light .glass-nav,
+html.light .glass-modal {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Text overrides */
+html.light .text-white,
+html.light .text-zinc-100,
+html.light .text-zinc-200,
+html.light .text-gray-100,
+html.light .text-gray-200 {
+  color: #09090b !important;
+}
+
+html.light .text-zinc-300,
+html.light .text-zinc-400,
+html.light .text-gray-300,
+html.light .text-gray-400 {
+  color: #52525b !important;
+}
+
+html.light .text-zinc-500,
+html.light .text-gray-500 {
+  color: #71717a !important;
+}
+
+/* Border overrides */
+html.light .border-zinc-800,
+html.light .border-zinc-700,
+html.light .border-zinc-900,
+html.light .border-gray-800,
+html.light .border-gray-700,
+html.light .border-white\/10,
+html.light .border-white\/5,
+html.light .border-white\/20,
+html.light .border-\[\#1f1f23\],
+html.light .border-\[\#3f3f46\],
+html.light .border-\[\#27272a\] {
+  border-color: #e4e4e7 !important;
+}
+
+/* Form Controls (Inputs, Selects, Textareas) */
+html.light input:not([type="checkbox"]):not([type="radio"]),
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border-color: #d4d4d8 !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #a1a1aa !important;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+/* Hover effects for light mode */
+html.light .hover\:bg-white\/5:hover,
+html.light .hover\:bg-white\/10:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Seat map overrides in Light Mode */
+html.light .seat-available {
+  background: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #09090b;
+}
+
+html.light .seat-available:hover {
+  background: #e4e4e7;
+  border-color: #ff6600;
+  box-shadow: 0 0 10px rgba(255, 102, 0, 0.3);
+}
+
+html.light .seat-booked {
+  background: #e4e4e7;
+  border-color: #d4d4d8;
+  opacity: 0.6;
+}
+
+html.light .seat-locked {
+  background: #ffedd5;
+  border: 1px dashed #ff7700;
+  color: #ff7700;
+}
+
+html.light .seat-selected {
+  background: #ff6600 !important;
+  border-color: #ff7700 !important;
+  color: #000000 !important;
+}
+
+/* ── Vibrant Pure Orange Theme (#FF6600 / #FF7700) across BOTH Dark & Light ── */
+.bg-primary,
+button.bg-primary,
+a.bg-primary {
+  background-color: #ff6600 !important;
+  color: #000000 !important;
+}
+
+.bg-primary:hover,
+button.bg-primary:hover,
+a.bg-primary:hover,
+.hover\:bg-primary:hover,
+.hover\:bg-orange-600:hover,
+.hover\:bg-orange-500:hover {
+  background-color: #ff7700 !important;
+  color: #000000 !important;
+}
+
+.bg-primary *,
+button.bg-primary *,
+a.bg-primary * {
+  color: #000000 !important;
+}
+
+.text-primary {
+  color: #ff6600 !important;
+}
+
+.border-primary {
+  border-color: #ff6600 !important;
+}
+
+.bg-primary\/20 {
+  background-color: rgba(255, 102, 0, 0.18) !important;
+}
+
+.bg-primary\/10 {
+  background-color: rgba(255, 102, 0, 0.10) !important;
+}
+
+.bg-primary\/30 {
+  background-color: rgba(255, 102, 0, 0.28) !important;
+}
+
+.border-primary\/30,
+.border-primary\/40,
+.border-primary\/50 {
+  border-color: rgba(255, 102, 0, 0.45) !important;
+}
+
+/* Toastify Customization for strict Orange & Black Theme */
+.Toastify__toast--error {
+  background: #141414 !important;
+  color: #ffffff !important;
+  border: 1px solid #ff6600 !important;
+}
+.Toastify__toast--error .Toastify__toast-icon svg {
+  fill: #ff6600 !important;
+}
+.Toastify__progress-bar--error {
+  background: #ff6600 !important;
+}
