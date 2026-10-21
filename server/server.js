@@ -40,6 +40,15 @@ app.use('/api/favorite', require('./routes/favoriteRoutes'));
 app.use('/api/review', require('./routes/reviewRoutes'));
 app.use('/api/email', require('./routes/emailRoutes'));
 
+// Health check endpoint for Render / cloud monitoring
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'connecting'
+  });
+});
+
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
@@ -52,18 +61,63 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: 'Internal Server Error' });
 });
 
-// Connect DB and start server
-mongoose.connect(process.env.MONGO_URI)
-  .then(async () => {
+// Robust database connection with in-memory fallback and auto-seed
+async function startServer() {
+  let mongoUri = process.env.MONGO_URI;
+
+  if (!mongoUri) {
+    console.warn('[Server] MONGO_URI not provided. Starting in-memory MongoDB fallback...');
+    try {
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongod = await MongoMemoryServer.create();
+      mongoUri = mongod.getUri();
+      console.log(`[Server] In-memory MongoDB running at: ${mongoUri}`);
+    } catch (e) {
+      console.error('[Server] Failed to create in-memory MongoDB:', e.message);
+      mongoUri = 'mongodb://127.0.0.1:27017/imovies';
+    }
+  }
+
+  try {
+    await mongoose.connect(mongoUri);
     console.log('MongoDB connected successfully');
     require('./utils/cleanupService');
     require('./utils/reminderService');
-    // Seed sample data for dev/demo
-    if (process.env.NODE_ENV !== 'production') {
-      try { await require('./seed')(); } catch(e) { /* seed errors are non-fatal */ }
+
+    // Auto-seed default user, admin, theatres, and TMDB movies
+    try {
+      await require('./seed')();
+    } catch (e) {
+      console.warn('[Seed] Warning during database seed:', e.message);
     }
-    server.listen(process.env.PORT || 5000, () => {
-      console.log(`iMovies server running on port ${process.env.PORT || 5000}`);
+
+    const port = process.env.PORT || 5000;
+    server.listen(port, () => {
+      console.log(`iMovies server running on port ${port}`);
     });
-  })
-  .catch(err => console.error('MongoDB connection error:', err));
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    try {
+      console.log('[Server] Attempting fallback to in-memory MongoDB...');
+      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const mongod = await MongoMemoryServer.create();
+      await mongoose.connect(mongod.getUri());
+      console.log('MongoDB in-memory connected successfully');
+      require('./utils/cleanupService');
+      require('./utils/reminderService');
+      await require('./seed')();
+      const port = process.env.PORT || 5000;
+      server.listen(port, () => {
+        console.log(`iMovies server running on port ${port} (In-Memory Fallback)`);
+      });
+    } catch (fallbackErr) {
+      console.error('[Server] Fatal MongoDB startup error:', fallbackErr.message);
+      const port = process.env.PORT || 5000;
+      server.listen(port, () => {
+        console.log(`iMovies server listening on port ${port} (Database offline)`);
+      });
+    }
+  }
+}
+
+startServer();

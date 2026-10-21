@@ -13,6 +13,10 @@ const brevo = new BrevoClient({
   maxRetries: 3
 });
 
+const getClientUrl = () => {
+  return (process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+};
+
 /**
  * Normalizes 'to' recipient input into Brevo format [{ email: string, name?: string }]
  */
@@ -204,7 +208,7 @@ const sendOTPEmail = async (email, otp, userName = 'Movie Enthusiast', templateI
   const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : (email?.email || '').trim().toLowerCase();
   const cleanOtp = sanitizePrimitiveOTP(otp);
   const cleanName = userName || cleanEmail.split('@')[0];
-  const cleanActionUrl = `http://localhost:5173/verify?token=${encodeURIComponent(cleanOtp)}&email=${encodeURIComponent(cleanEmail)}`;
+  const cleanActionUrl = `${getClientUrl()}/verify?token=${encodeURIComponent(cleanOtp)}&email=${encodeURIComponent(cleanEmail)}`;
 
   // Decoupled clean parameters for Brevo
   const decoupledParams = {
@@ -306,7 +310,7 @@ const sendVerificationEmail = async (email, verificationTokenOrLink, userName = 
   const actionUrl = customActionUrl || (
     typeof verificationTokenOrLink === 'string' && (verificationTokenOrLink.startsWith('http://') || verificationTokenOrLink.startsWith('https://'))
       ? verificationTokenOrLink
-      : `http://localhost:5173/verify?token=${encodeURIComponent(cleanOtp)}&email=${encodeURIComponent(cleanEmail)}`
+      : `${getClientUrl()}/verify?token=${encodeURIComponent(cleanOtp)}&email=${encodeURIComponent(cleanEmail)}`
   );
 
   // Decoupled clean parameters for Brevo
@@ -401,7 +405,7 @@ const sendPasswordResetEmail = async (email, resetTokenOrLink, userName = 'Movie
   const actionUrl = customActionUrl || (
     typeof resetTokenOrLink === 'string' && (resetTokenOrLink.startsWith('http://') || resetTokenOrLink.startsWith('https://'))
       ? resetTokenOrLink
-      : `http://localhost:5173/reset-password?token=${encodeURIComponent(cleanToken)}&email=${encodeURIComponent(cleanEmail)}`
+      : `${getClientUrl()}/reset-password?token=${encodeURIComponent(cleanToken)}&email=${encodeURIComponent(cleanEmail)}`
   );
 
   const decoupledParams = {

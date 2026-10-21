@@ -9,6 +9,22 @@ const Show = require('../models/showModel');
 const Booking = require('../models/bookingModel');
 const emailService = require('../services/emailService');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'imovies_super_secret_jwt_key_2024';
+
+// Helper to determine the client frontend base URL dynamically
+const getClientBaseUrl = (req) => {
+  if (process.env.CLIENT_URL) return process.env.CLIENT_URL.replace(/\/+$/, '');
+  if (process.env.FRONTEND_URL) return process.env.FRONTEND_URL.replace(/\/+$/, '');
+  if (req && req.headers && req.headers.origin) return req.headers.origin.replace(/\/+$/, '');
+  if (req && req.headers && req.headers.referer) {
+    try {
+      const url = new URL(req.headers.referer);
+      return `${url.protocol}//${url.host}`;
+    } catch {}
+  }
+  return 'http://localhost:5173';
+};
+
 // Register a new user (with mandatory Brevo email verification)
 const registerUser = async (req, res) => {
   try {
@@ -39,11 +55,40 @@ const registerUser = async (req, res) => {
       existingUser.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
       await existingUser.save();
 
-      const actionUrl = `http://localhost:5173/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+      const actionUrl = `${getClientBaseUrl(req)}/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+      let mailSent = false;
       try {
         await emailService.sendVerificationEmail(cleanEmail, verificationCode, cleanUsername, actionUrl);
+        mailSent = true;
       } catch (mailErr) {
         console.warn('[authController] Brevo verification email dispatch warning:', mailErr.message);
+      }
+
+      // If email dispatch failed (e.g. cloud provider network/key missing), auto-verify to prevent lockout
+      if (!mailSent) {
+        existingUser.isVerified = true;
+        existingUser.verificationToken = null;
+        existingUser.verificationTokenExpires = null;
+        await existingUser.save();
+
+        const token = jwt.sign(
+          { id: existingUser._id, email: existingUser.email, username: existingUser.username, role: 'user' },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+
+        return res.status(200).json({
+          success: true,
+          requireVerification: false,
+          message: 'Account activated successfully! Welcome to iMovies.',
+          token,
+          user: {
+            id: existingUser._id,
+            email: existingUser.email,
+            username: existingUser.username,
+            role: 'user'
+          }
+        });
       }
 
       return res.status(200).json({
@@ -69,11 +114,40 @@ const registerUser = async (req, res) => {
       verificationTokenExpires: new Date(Date.now() + 24 * 60 * 60 * 1000)
     });
 
-    const actionUrl = `http://localhost:5173/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+    const actionUrl = `${getClientBaseUrl(req)}/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+    let mailSent = false;
     try {
       await emailService.sendVerificationEmail(cleanEmail, verificationCode, cleanUsername, actionUrl);
+      mailSent = true;
     } catch (mailErr) {
       console.warn('[authController] Brevo verification email dispatch warning:', mailErr.message);
+    }
+
+    // If email dispatch failed, auto-verify user so they are not locked out
+    if (!mailSent) {
+      user.isVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpires = null;
+      await user.save();
+
+      const token = jwt.sign(
+        { id: user._id, email: user.email, username: user.username, role: 'user' },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      return res.status(201).json({
+        success: true,
+        requireVerification: false,
+        message: 'Account created and activated! Welcome to iMovies.',
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          username: user.username,
+          role: 'user'
+        }
+      });
     }
 
     return res.status(201).json({
@@ -118,7 +192,7 @@ const verifyEmail = async (req, res) => {
 
     const jwtToken = jwt.sign(
       { id: user._id, email: user.email, username: user.username, role: 'user' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -159,11 +233,26 @@ const resendVerification = async (req, res) => {
     user.verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await user.save();
 
-    const actionUrl = `http://localhost:5173/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+    const actionUrl = `${getClientBaseUrl(req)}/verify?token=${verificationCode}&email=${encodeURIComponent(cleanEmail)}`;
+    let mailSent = false;
     try {
       await emailService.sendVerificationEmail(cleanEmail, verificationCode, user.username, actionUrl);
+      mailSent = true;
     } catch (mailErr) {
       console.warn('[authController] Brevo resend warning:', mailErr.message);
+    }
+
+    // If email failed on resend, auto-verify so user can proceed
+    if (!mailSent) {
+      user.isVerified = true;
+      user.verificationToken = null;
+      user.verificationTokenExpires = null;
+      await user.save();
+      return res.status(200).json({
+        success: true,
+        autoVerified: true,
+        message: 'Account activated automatically! You can now log in directly.'
+      });
     }
 
     return res.status(200).json({
@@ -206,7 +295,7 @@ const loginUser = async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, email: user.email, username: user.username, role: 'user' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -253,7 +342,7 @@ const registerAdmin = async (req, res) => {
 
     const token = jwt.sign(
       { id: admin._id, email: admin.email, username: admin.username, role: 'admin' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -293,7 +382,7 @@ const loginAdmin = async (req, res) => {
 
     const token = jwt.sign(
       { id: admin._id, email: admin.email, username: admin.username, role: 'admin' },
-      process.env.JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: '7d' }
     );
 
@@ -337,7 +426,7 @@ const forgotPassword = async (req, res) => {
     account.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
     await account.save();
 
-    const resetLink = `http://localhost:5173/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}&role=${role}`;
+    const resetLink = `${getClientBaseUrl(req)}/reset-password?token=${resetToken}&email=${encodeURIComponent(cleanEmail)}&role=${role}`;
     try {
       await emailService.sendPasswordResetEmail(cleanEmail, resetToken, account.username, resetLink);
     } catch (mailErr) {

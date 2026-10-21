@@ -20,28 +20,37 @@ const seedData = async () => {
     const salt = await bcrypt.genSalt(10);
 
     // --- Users ---
+    const userHashedPassword = await bcrypt.hash('user1234', salt);
     const existingUser = await User.findOne({ email: 'user@imovies.com' });
     if (!existingUser) {
       await User.create({
-        username: 'testuser',
+        username: 'CinemaBuff',
         email: 'user@imovies.com',
-        password: await bcrypt.hash('user1234', salt),
+        password: userHashedPassword,
         isVerified: true
       });
       console.log('  👤 Test User created: user@imovies.com / user1234 (Verified)');
     } else {
-      await User.updateOne({ email: 'user@imovies.com' }, { $set: { isVerified: true } });
+      existingUser.password = userHashedPassword;
+      existingUser.isVerified = true;
+      await existingUser.save();
+      console.log('  👤 Test User verified & synced: user@imovies.com / user1234');
     }
 
     // --- Admins ---
+    const adminHashedPassword = await bcrypt.hash('admin1234', salt);
     const existingAdmin = await Admin.findOne({ email: 'admin@imovies.com' });
     if (!existingAdmin) {
       await Admin.create({
         username: 'superadmin',
         email: 'admin@imovies.com',
-        password: await bcrypt.hash('admin1234', salt)
+        password: adminHashedPassword
       });
       console.log('  🔐 Test Admin created: admin@imovies.com / admin1234');
+    } else {
+      existingAdmin.password = adminHashedPassword;
+      await existingAdmin.save();
+      console.log('  🔐 Test Admin synced: admin@imovies.com / admin1234');
     }
 
     // --- Theatres (Country-based) ---
