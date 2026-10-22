@@ -6,6 +6,7 @@ const showSchema = new mongoose.Schema({
   movieId: { type: String, required: true },
   theatreId: { type: String, required: true },
   theatreName: { type: String, required: true },
+  location: { type: String, default: 'City Centre' },
   movieName: { type: String, default: '' },
   showDate: { type: String, required: true },
   showTime: { type: String, required: true },

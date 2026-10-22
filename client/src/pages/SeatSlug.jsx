@@ -7,6 +7,7 @@ import Footer from '../components/Footer';
 import Loader from '../components/Loader';
 import { api, API_URL } from '../utils/api';
 import { useTheme } from '../utils/ThemeContext';
+import { isShowExpired, formatDisplayTime } from '../utils/showTimeHelper';
 import dayjs from 'dayjs';
 
 const loadRazorpayScript = () => {
@@ -182,7 +183,16 @@ function SeatSlug() {
   const middleRows = useMemo(() => generateSectionGrid('middle', 'M', 5, 12), [theatre, show, pricing]);
   const lowerRows = useMemo(() => generateSectionGrid('lower', 'L', 3, 10), [theatre, show, pricing]);
 
+  const isExpired = useMemo(() => {
+    if (!show) return false;
+    return isShowExpired(show.showDate, show.showTime) || Boolean(show.isExpired);
+  }, [show]);
+
   const handleSeatClick = (seat) => {
+    if (isExpired) {
+      toast.error('This showtime has already passed. Seat selection is closed.');
+      return;
+    }
     if (bookedSeats.has(seat.id) || lockedSeats.has(seat.id)) return;
 
     if (selectedSeats.some((s) => s.id === seat.id)) {
@@ -212,6 +222,10 @@ function SeatSlug() {
    * Step 5 — Confirmation & Notification: Redirect to /bookings with digital ticket
    */
   const handleRazorpayPayment = async () => {
+    if (isExpired) {
+      toast.error('This showtime has already passed and cannot be booked.');
+      return;
+    }
     if (selectedSeats.length === 0) {
       toast.error('Please select at least one seat to proceed to checkout');
       return;
@@ -411,6 +425,35 @@ function SeatSlug() {
 
       {/* Main Seat Map Area */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center">
+        {/* Expired Showtime Notice */}
+        {isExpired && (
+          <div className="w-full max-w-4xl mb-6 p-4 sm:p-5 bg-red-950/80 border border-red-500/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center flex-shrink-0 text-xl border border-red-500/30">
+                <i className="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-sm sm:text-base flex items-center gap-2">
+                  <span>Showtime Has Already Concluded</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 uppercase font-black">
+                    Slot Closed
+                  </span>
+                </h3>
+                <p className="text-xs text-red-200 mt-0.5">
+                  This show was scheduled for {show?.showDate} at {formatDisplayTime(show?.showTime)}. Bookings and seat selection are closed for past slots.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate(`/movieshows/${movie?._id || movie?.id || show?.movieId}`)}
+              className="px-4 py-2 bg-primary hover:bg-orange-500 text-black text-xs font-black rounded-lg transition whitespace-nowrap self-start sm:self-center flex items-center gap-1.5 shadow-md"
+            >
+              <span>Browse Upcoming Shows</span>
+              <i className="fa-solid fa-arrow-right text-[10px]"></i>
+            </button>
+          </div>
+        )}
+
         {/* Tier Pricing Legend */}
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mb-8 text-xs font-semibold text-gray-300 bg-card/60 px-6 py-3 rounded-2xl border border-gray-800">
           <div className="flex items-center gap-2">
@@ -607,10 +650,19 @@ function SeatSlug() {
 
             <button
               onClick={handleRazorpayPayment}
-              disabled={selectedSeats.length === 0 || bookingInProgress || timeLeft === 0}
-              className="px-8 py-3.5 bg-primary hover:bg-[#ff7700] text-black font-black rounded-none shadow-xl transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2.5 text-sm sm:text-base"
+              disabled={isExpired || selectedSeats.length === 0 || bookingInProgress || timeLeft === 0}
+              className={`px-8 py-3.5 font-black rounded-none shadow-xl transition flex items-center gap-2.5 text-sm sm:text-base ${
+                isExpired
+                  ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
+                  : 'bg-primary hover:bg-[#ff7700] text-black disabled:opacity-40 disabled:cursor-not-allowed'
+              }`}
             >
-              {bookingInProgress ? (
+              {isExpired ? (
+                <>
+                  <i className="fa-solid fa-lock text-sm"></i>
+                  <span>Showtime Expired (Booking Closed)</span>
+                </>
+              ) : bookingInProgress ? (
                 <>
                   <div className="w-4 h-4 border-2 border-black border-t-transparent animate-spin"></div>
                   <span>Processing Razorpay...</span>

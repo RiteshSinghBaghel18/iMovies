@@ -5,6 +5,7 @@ const Booking = require('../models/bookingModel');
 const Show = require('../models/showModel');
 const Movie = require('../models/movieModel');
 const { sendBookingConfirmation } = require('../utils/mailer');
+const { isShowExpired } = require('../utils/showTimeHelper');
 
 const getRazorpayInstance = () => {
   const key_id = process.env.RAZORPAY_KEY_ID || 'rzp_test_TqZowQCQ3E5us4';
@@ -51,6 +52,13 @@ const createOrder = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Show not found'
+      });
+    }
+
+    if (isShowExpired(show.showDate, show.showTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This showtime has already passed and is no longer available for booking.'
       });
     }
 

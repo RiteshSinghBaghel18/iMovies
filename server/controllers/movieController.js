@@ -4,47 +4,43 @@ const Show = require('../models/showModel');
 const tmdbService = require('../services/tmdbService');
 const { ensureShowsForMovie } = require('../utils/showGenerator');
 
-// Get all movies with dynamic live TMDB market integration and optional filters
+// Get all movies with dynamic live TMDB market integration and optional filters (?genre=&language=&search=)
 const getAllMovies = async (req, res) => {
   try {
     const { genre, language, search, category, refresh, location } = req.query;
 
-    // 1. If searching: query TMDB live search first, sync results to DB with real trailers, and return
+    // 1. If searching, attempt TMDB live sync if local DB might need fresh records
     if (search && search.trim()) {
       try {
-        const tmdbSearchResults = await tmdbService.searchMovies(search.trim());
-        const results = (tmdbSearchResults.results || []).slice(0, 20);
-        const genreMap = await tmdbService.fetchGenreMap();
+        const localMatches = await Movie.countDocuments({
+          $or: [
+            { movieName: { $regex: search.trim(), $options: 'i' } },
+            { description: { $regex: search.trim(), $options: 'i' } }
+          ]
+        });
 
-        // Sync matching movies to DB so they have valid MongoDB ObjectIds, real trailers, and can be booked
-        const syncedSearchResults = [];
-        for (const item of results) {
-          let details = null;
-          try {
-            details = await tmdbService.getMovieDetails(item.id);
-          } catch (e) {
-            // non-fatal
-          }
-          const formatted = tmdbService.formatMovieData(item, details, genreMap);
-          const doc = await Movie.findOneAndUpdate(
-            { tmdbId: formatted.tmdbId },
-            { $set: formatted },
-            { new: true, upsert: true }
-          );
-          if (doc) {
-            await ensureShowsForMovie(doc, 4);
-            syncedSearchResults.push(doc);
-          }
-        }
+        if (localMatches === 0) {
+          const tmdbSearchResults = await tmdbService.searchMovies(search.trim());
+          const results = (tmdbSearchResults.results || []).slice(0, 10);
+          const genreMap = await tmdbService.fetchGenreMap();
 
-        if (syncedSearchResults.length > 0) {
-          return res.status(200).json({
-            success: true,
-            source: 'tmdb-live-search',
-            count: syncedSearchResults.length,
-            data: syncedSearchResults,
-            movies: syncedSearchResults
-          });
+          for (const item of results) {
+            let details = null;
+            try {
+              details = await tmdbService.getMovieDetails(item.id);
+            } catch (e) {
+              // non-fatal
+            }
+            const formatted = tmdbService.formatMovieData(item, details, genreMap);
+            const doc = await Movie.findOneAndUpdate(
+              { tmdbId: formatted.tmdbId },
+              { $set: formatted },
+              { new: true, upsert: true }
+            );
+            if (doc) {
+              await ensureShowsForMovie(doc, 7);
+            }
+          }
         }
       } catch (tmdbErr) {
         console.warn('[movieController] TMDB search fallback to local DB:', tmdbErr.message);
@@ -53,7 +49,7 @@ const getAllMovies = async (req, res) => {
 
     // 2. Check if DB has enough TMDB live movies; if not, sync from TMDB
     const count = await Movie.countDocuments({ tmdbId: { $exists: true, $ne: null } });
-    if (count < 15 || refresh === 'true') {
+    if (count < 10 || refresh === 'true') {
       try {
         console.log('[movieController] Seeding/Syncing live market movies with real trailers from TMDB...');
         const nowPlaying = await tmdbService.syncNowPlayingMovies(12);
@@ -61,42 +57,86 @@ const getAllMovies = async (req, res) => {
         const topRated = await tmdbService.syncTopRatedMovies(10);
         const upcoming = await tmdbService.syncUpcomingMovies(10);
         const allNew = [...nowPlaying, ...popular, ...topRated, ...upcoming];
-        // Ensure shows for top synced movies
-        for (const m of allNew.slice(0, 10)) {
-          await ensureShowsForMovie(m, 4);
+        for (const m of allNew.slice(0, 8)) {
+          await ensureShowsForMovie(m, 7);
         }
       } catch (syncErr) {
         console.warn('[movieController] Live TMDB auto-sync non-fatal warning:', syncErr.message);
       }
     }
 
-    // 3. Build MongoDB query filter
-    const filter = {};
+    // 3. Build MongoDB query filter matching search, genre, language, and category
+    const andConditions = [];
 
-    // Do not return any legacy seeded mock movies
-    filter.movieName = {
-      $nin: [
-        'Galactic Storm',
-        'Midnight Shadows',
-        'Laughing Paradise',
-        'Eternal Hearts',
-        'Shadow Protocol',
-        "Dragon's Peak"
-      ]
-    };
+    // Exclude any legacy mock movies
+    andConditions.push({
+      movieName: {
+        $nin: [
+          'Galactic Storm',
+          'Midnight Shadows',
+          'Laughing Paradise',
+          'Eternal Hearts',
+          'Shadow Protocol',
+          "Dragon's Peak"
+        ]
+      }
+    });
 
+    // Search filter (?search=)
     if (search && search.trim()) {
-      filter.movieName = { $regex: search.trim(), $options: 'i' };
+      const sTerm = search.trim();
+      andConditions.push({
+        $or: [
+          { movieName: { $regex: sTerm, $options: 'i' } },
+          { description: { $regex: sTerm, $options: 'i' } }
+        ]
+      });
     }
 
-    if (genre && genre !== 'All' && genre !== 'All Genres') {
-      filter.genres = { $in: [new RegExp(`^${genre}$`, 'i')] };
+    // Genre filter (?genre=)
+    if (genre && genre.trim() && genre !== 'All' && genre !== 'All Genres') {
+      const gTerm = genre.trim();
+      andConditions.push({
+        $or: [
+          { genres: { $regex: new RegExp(gTerm, 'i') } },
+          { genre: { $regex: new RegExp(gTerm, 'i') } }
+        ]
+      });
     }
 
-    if (language && language !== 'All' && language !== 'All Languages') {
-      filter.language = { $regex: new RegExp(`^${language}$`, 'i') };
+    // Language filter (?language=)
+    if (language && language.trim() && language !== 'All' && language !== 'All Languages') {
+      const lTerm = language.trim();
+      const langMap = {
+        english: 'en',
+        hindi: 'hi',
+        korean: 'ko',
+        japanese: 'ja',
+        spanish: 'es',
+        french: 'fr',
+        german: 'de',
+        tamil: 'ta',
+        telugu: 'te',
+        malayalam: 'ml',
+        chinese: 'zh'
+      };
+      const code = langMap[lTerm.toLowerCase()];
+      if (code) {
+        andConditions.push({
+          $or: [
+            { language: { $regex: new RegExp(`^${lTerm}$`, 'i') } },
+            { language: { $regex: new RegExp(`^${code}$`, 'i') } },
+            { language: { $regex: new RegExp(lTerm, 'i') } }
+          ]
+        });
+      } else {
+        andConditions.push({
+          language: { $regex: new RegExp(lTerm, 'i') }
+        });
+      }
     }
 
+    // Location filter
     if (location && location !== 'All' && location !== 'All Countries') {
       const matchingTheatres = await Theatre.find({ location: new RegExp(location.trim(), 'i') });
       if (matchingTheatres.length > 0) {
@@ -104,25 +144,36 @@ const getAllMovies = async (req, res) => {
         const shows = await Show.find({ theatreId: { $in: theatreIds } });
         const movieIds = [...new Set(shows.map(s => s.movieId))];
         if (movieIds.length > 0) {
-          filter.$or = [
-            { _id: { $in: movieIds } },
-            { tmdbId: { $in: movieIds.filter(id => !isNaN(id)) } }
-          ];
+          andConditions.push({
+            $or: [
+              { _id: { $in: movieIds } },
+              { tmdbId: { $in: movieIds.filter(id => !isNaN(id)) } }
+            ]
+          });
         }
       }
     }
 
+    // Category tabs filter
     if (category) {
       if (category === 'nowPlaying' || category === 'now_playing') {
-        filter.$or = [{ categories: 'now_playing' }, { releaseDate: { $lte: new Date() } }];
+        andConditions.push({
+          $or: [{ categories: 'now_playing' }, { releaseDate: { $lte: new Date() } }]
+        });
       } else if (category === 'popular') {
-        filter.categories = 'popular';
+        andConditions.push({ categories: 'popular' });
       } else if (category === 'top_rated') {
-        filter.$or = [{ categories: 'top_rated' }, { rating: { $gte: 7.5 } }];
+        andConditions.push({
+          $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.0 } }]
+        });
       } else if (category === 'upcoming') {
-        filter.$or = [{ categories: 'upcoming' }, { releaseDate: { $gt: new Date() } }];
+        andConditions.push({
+          $or: [{ categories: 'upcoming' }, { releaseDate: { $gt: new Date() } }]
+        });
       }
     }
+
+    const finalFilter = andConditions.length > 0 ? { $and: andConditions } : {};
 
     let sort = { releaseDate: -1, createdAt: -1 };
     if (category === 'popular') {
@@ -133,7 +184,7 @@ const getAllMovies = async (req, res) => {
       sort = { releaseDate: 1 };
     }
 
-    const movies = await Movie.find(filter).sort(sort);
+    const movies = await Movie.find(finalFilter).sort(sort);
 
     return res.status(200).json({
       success: true,

@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import Loader from '../components/Loader';
 import { api } from '../utils/api';
 import { useTheme } from '../utils/ThemeContext';
+import { isShowExpired, formatDisplayTime } from '../utils/showTimeHelper';
 import dayjs from 'dayjs';
 
 function MovieShows() {
@@ -184,6 +185,24 @@ function MovieShows() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Theatre & Showtime Availability Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white">
+                  Available Theatres for {dayjs(selectedDate).format('MMMM D, YYYY')} ({groupedByTheatre.length} {groupedByTheatre.length === 1 ? 'Cinema' : 'Cinemas'})
+                </h2>
+              </div>
+              <div className="flex items-center gap-3 text-xs text-zinc-400">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Active Booking
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-zinc-600"></span> Passed Slot
+                </span>
+              </div>
+            </div>
+
             {groupedByTheatre.map((group, idx) => (
               <div
                 key={idx}
@@ -203,45 +222,73 @@ function MovieShows() {
 
                   {/* Pricing Tiers Preview */}
                   <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
-                    {(group.theatre.balconySeatPrice || group.shows[0]?.balconyPrice) && (
+                    {(group.theatre?.balconySeatPrice || group.shows[0]?.balconyPrice) && (
                       <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
                         <strong className="text-primary">Balcony:</strong> ₹
-                        {group.theatre.balconySeatPrice || group.shows[0]?.balconyPrice}
+                        {group.theatre?.balconySeatPrice || group.shows[0]?.balconyPrice}
                       </span>
                     )}
-                    {(group.theatre.middleSeatPrice || group.shows[0]?.middlePrice) && (
+                    {(group.theatre?.middleSeatPrice || group.shows[0]?.middlePrice) && (
                       <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
                         <strong className="text-primary">Middle:</strong> ₹
-                        {group.theatre.middleSeatPrice || group.shows[0]?.middlePrice}
+                        {group.theatre?.middleSeatPrice || group.shows[0]?.middlePrice}
                       </span>
                     )}
-                    {(group.theatre.lowerSeatPrice || group.shows[0]?.lowerPrice) && (
+                    {(group.theatre?.lowerSeatPrice || group.shows[0]?.lowerPrice) && (
                       <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
                         <strong className="text-primary">Lower:</strong> ₹
-                        {group.theatre.lowerSeatPrice || group.shows[0]?.lowerPrice}
+                        {group.theatre?.lowerSeatPrice || group.shows[0]?.lowerPrice}
                       </span>
                     )}
                   </div>
                 </div>
 
                 {/* Showtimes Cards Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                   {group.shows.map((show) => {
-                    // Use showId UUID for navigation (matches getShowById route lookup)
                     const showId = show.showId || show._id || show.id;
-                    const timeFormatted = show.showTime || '18:00';
+                    const isExpired = isShowExpired(show.showDate, show.showTime) || show.isExpired;
+                    const displayTime = formatDisplayTime(show.showTime || '18:00');
+
+                    if (isExpired) {
+                      return (
+                        <div
+                          key={showId}
+                          className="bg-[#0e0e12] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between opacity-55 cursor-not-allowed select-none transition-all"
+                          title={`Showtime at ${displayTime} has already concluded for today`}
+                        >
+                          <div className="text-center">
+                            <span className="text-base font-bold text-zinc-500 line-through block">
+                              {displayTime}
+                            </span>
+                            <span className="text-[10px] text-zinc-400 font-semibold inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-zinc-800/90 border border-zinc-700/60">
+                              <i className="fa-regular fa-clock text-[9px] text-zinc-400"></i> Passed
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full mt-3 py-1.5 px-2 bg-zinc-800/80 text-zinc-400 text-xs font-bold rounded-lg cursor-not-allowed flex items-center justify-center gap-1"
+                          >
+                            <i className="fa-solid fa-ban text-[10px]"></i>
+                            <span>Show Closed</span>
+                          </button>
+                        </div>
+                      );
+                    }
 
                     return (
                       <div
                         key={showId}
-                        className="bg-zinc-900/90 border border-zinc-800 hover:border-primary rounded-xl p-3 flex flex-col justify-between group transition-all"
+                        className="bg-zinc-900 border border-zinc-800 hover:border-primary rounded-xl p-3 flex flex-col justify-between group transition-all shadow-md hover:shadow-orange-950/40"
                       >
                         <div className="text-center">
                           <span className="text-lg font-black text-white group-hover:text-primary transition-colors block">
-                            {timeFormatted}
+                            {displayTime}
                           </span>
-                          <span className="text-[10px] text-primary font-semibold block mt-0.5">
-                            Available Now
+                          <span className="text-[10px] text-emerald-400 font-semibold inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-800/50">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Available
                           </span>
                         </div>
 

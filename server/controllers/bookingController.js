@@ -3,6 +3,7 @@ const Show = require('../models/showModel');
 const Booking = require('../models/bookingModel');
 const Movie = require('../models/movieModel');
 const { sendBookingConfirmation } = require('../utils/mailer');
+const { isShowExpired } = require('../utils/showTimeHelper');
 
 // Lock seats for booking process
 const lockSeats = async (req, res) => {
@@ -29,6 +30,13 @@ const lockSeats = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Show not found'
+      });
+    }
+
+    if (isShowExpired(show.showDate, show.showTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This showtime has already passed and is no longer available for seat selection or booking.'
       });
     }
 
@@ -117,6 +125,13 @@ const createBooking = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Show not found'
+      });
+    }
+
+    if (isShowExpired(show.showDate, show.showTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'This showtime has already passed. Tickets cannot be booked for past shows.'
       });
     }
 

@@ -4,6 +4,7 @@ const Show = require('../models/showModel');
 const Theatre = require('../models/theatreModel');
 const Movie = require('../models/movieModel');
 const { ensureShowsForMovie } = require('../utils/showGenerator');
+const { isShowExpired } = require('../utils/showTimeHelper');
 
 // Helper to generate seat labels: 0 -> A, 1 -> B, ... 26 -> AA
 const getRowLabel = (index) => {
@@ -23,10 +24,17 @@ const getAllShows = async (req, res) => {
       filter.movieId = req.query.movieId;
     }
     const shows = await Show.find(filter).sort({ createdAt: -1 });
+    const enrichedShows = shows.map((s) => {
+      const obj = s.toObject ? s.toObject() : { ...s };
+      obj.isExpired = isShowExpired(obj.showDate, obj.showTime);
+      return obj;
+    });
+
     return res.status(200).json({
       success: true,
-      data: shows,
-      shows
+      count: enrichedShows.length,
+      data: enrichedShows,
+      shows: enrichedShows
     });
   } catch (error) {
     return res.status(500).json({
@@ -36,7 +44,7 @@ const getAllShows = async (req, res) => {
   }
 };
 
-// Get show by showId, enriched with movie and theatre details
+// Get show by showId, enriched with movie, theatre, and isExpired status
 const getShowById = async (req, res) => {
   try {
     const showId = req.params.showId || req.params.id;
@@ -57,14 +65,17 @@ const getShowById = async (req, res) => {
       Theatre.findOne({ theatreId: show.theatreId })
     ]);
 
+    const showObj = show.toObject ? show.toObject() : { ...show };
+    showObj.isExpired = isShowExpired(showObj.showDate, showObj.showTime);
+
     return res.status(200).json({
       success: true,
       data: {
-        show,
+        show: showObj,
         movie,
         theatre
       },
-      show,
+      show: showObj,
       movie,
       theatre
     });
@@ -176,6 +187,7 @@ const addShow = async (req, res) => {
       movieId: String(movie._id),
       theatreId: String(theatre.theatreId || theatre._id),
       theatreName,
+      location: theatre.location || 'City Centre',
       movieName,
       showDate: formattedDate,
       showTime,
@@ -267,29 +279,36 @@ const deleteShow = async (req, res) => {
   }
 };
 
-// Get shows by movieId
+// Get shows by movieId, ensuring all theatres have active shows and flagging expired showtimes
 const getShowsByMovieId = async (req, res) => {
   try {
     const movieIdParam = req.params.movieId;
-    let shows = await Show.find({ movieId: movieIdParam }).sort({ showDate: 1, showTime: 1 });
 
-    // If no shows exist for this movie, automatically create shows for it
-    if (shows.length === 0) {
-      let movie = null;
-      if (movieIdParam.match(/^[0-9a-fA-F]{24}$/)) {
-        movie = await Movie.findById(movieIdParam);
-      } else if (!isNaN(Number(movieIdParam))) {
-        movie = await Movie.findOne({ tmdbId: Number(movieIdParam) });
-      }
-      if (movie) {
-        shows = await ensureShowsForMovie(movie, 4);
-      }
+    let movie = null;
+    if (movieIdParam.match(/^[0-9a-fA-F]{24}$/)) {
+      movie = await Movie.findById(movieIdParam);
+    } else if (!isNaN(Number(movieIdParam))) {
+      movie = await Movie.findOne({ tmdbId: Number(movieIdParam) });
     }
+
+    if (movie) {
+      await ensureShowsForMovie(movie, 7);
+    }
+
+    const shows = await Show.find({ movieId: movieIdParam }).sort({ showDate: 1, showTime: 1 });
+
+    // Enrich shows with isExpired flag
+    const enrichedShows = shows.map((s) => {
+      const obj = s.toObject ? s.toObject() : { ...s };
+      obj.isExpired = isShowExpired(obj.showDate, obj.showTime);
+      return obj;
+    });
 
     return res.status(200).json({
       success: true,
-      data: shows,
-      shows
+      count: enrichedShows.length,
+      data: enrichedShows,
+      shows: enrichedShows
     });
   } catch (error) {
     return res.status(500).json({
