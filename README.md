@@ -8,7 +8,7 @@ A full-stack cinema booking application built on the MERN stack. Features real-t
 
 - **Live TMDB Market Integration**: Automatically fetches and syncs currently playing, trending, and upcoming releases complete with genuine trailer embeds and poster artwork.
 - **Smart Showtime Expiration**: Past time slots for the current day (e.g., a 10:30 AM show when it is 1:00 PM) are automatically closed and disabled, preventing invalid seat reservations.
-- **Multi-Theatre Booking Flow**: Browse all available cinemas (iMovies Grand Cineplex, PVR IMAX, INOX Megaplex, Cinepolis VIP) with transparent pricing across Balcony, Middle, and Lower tiers.
+- **Multi-Theatre Booking Flow**: Browse all available cinemas with transparent pricing across Balcony, Middle, and Lower tiers.
 - **Interactive Real-Time Seating Map**: Visual seat grid powered by Socket.io for live updates. Seats are locked with a 10-minute hold timer to prevent double booking.
 - **Advanced Movie Filtering**: Public `GET /api/movie` endpoint with flexible query filtering (`?genre=&language=&search=`) paired with a debounced UI search bar.
 - **Razorpay Payment Gateway**: Seamless test-mode checkout with HMAC SHA256 server-side signature verification.
