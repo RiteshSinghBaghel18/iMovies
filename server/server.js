@@ -8,15 +8,14 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-// CORS configuration: dynamically allow Vercel production frontends, localhost, and custom domains
+// Comprehensive CORS configuration: dynamically allow any frontend origin (Vercel, localhost, custom domains)
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server) or any client origin
     callback(null, true);
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'auth-token', 'X-Requested-With', 'Accept', 'Origin']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
+  exposedHeaders: ['auth-token']
 };
 
 const io = new Server(server, { cors: corsOptions });
@@ -25,7 +24,23 @@ const io = new Server(server, { cors: corsOptions });
 module.exports = { io, app, server };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+
+// Universal preflight & CORS header middleware for rock-solid cross-origin handling
+app.use((req, res, next) => {
+  const origin = req.headers.origin || '*';
+  res.header('Access-Control-Allow-Origin', origin);
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH,HEAD');
+  res.header(
+    'Access-Control-Allow-Headers',
+    req.headers['access-control-request-headers'] || 'Origin, X-Requested-With, Content-Type, Accept, Authorization, auth-token, Cache-Control, Pragma'
+  );
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  next();
+});
+
 app.use(express.json());
 
 // Routes
@@ -84,16 +99,15 @@ async function startServer() {
     require('./utils/cleanupService');
     require('./utils/reminderService');
 
-    // Auto-seed default user, admin, theatres, and TMDB movies
-    try {
-      await require('./seed')();
-    } catch (e) {
-      console.warn('[Seed] Warning during database seed:', e.message);
-    }
-
     const port = process.env.PORT || 5000;
     server.listen(port, () => {
       console.log(`iMovies server running on port ${port}`);
+    });
+
+    // Auto-seed default user, admin, theatres, and TMDB movies in the background
+    // (Non-blocking so server binds port immediately on cold start)
+    require('./seed')().catch((e) => {
+      console.warn('[Seed] Warning during database seed:', e.message);
     });
   } catch (err) {
     console.error('MongoDB connection error:', err);
@@ -105,10 +119,14 @@ async function startServer() {
       console.log('MongoDB in-memory connected successfully');
       require('./utils/cleanupService');
       require('./utils/reminderService');
-      await require('./seed')();
+
       const port = process.env.PORT || 5000;
       server.listen(port, () => {
         console.log(`iMovies server running on port ${port} (In-Memory Fallback)`);
+      });
+
+      require('./seed')().catch((e) => {
+        console.warn('[Seed] Warning during fallback seed:', e.message);
       });
     } catch (fallbackErr) {
       console.error('[Server] Fatal MongoDB startup error:', fallbackErr.message);
