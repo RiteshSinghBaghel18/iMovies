@@ -68,11 +68,11 @@ Create or verify `server/.env`:
 ```env
 PORT=5000
 MONGO_URI=mongodb://localhost:27017/imovies
-JWT_SECRET=imovies_super_secret_jwt_key_2024
+JWT_SECRET=imovies_super_secret
 EMAIL_USER=your_email@gmail.com
 EMAIL_PASS=your_gmail_app_password
-RAZORPAY_KEY_ID=rzp_test_TqZowQCQ3E5us4
-RAZORPAY_KEY_SECRET=lSiHHMZDMQB8ZQ88jKqAjyQJ
+RAZORPAY_KEY_ID=rzp_test_Tqs4
+RAZORPAY_KEY_SECRET=lSiHyQJ
 TMDB_API_KEY=your_tmdb_api_key_optional
 ```
 
@@ -80,7 +80,7 @@ Create or verify `client/.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000
-VITE_RAZORPAY_KEY_ID=rzp_test_TqZowQCQ3E5us4
+VITE_RAZORPAY_KEY_ID=rzp_test_TqZus4
 ```
 
 ### 2. Install Dependencies
@@ -121,11 +121,11 @@ Visit **`http://localhost:5173`** in your browser.
 The backend automatically creates test credentials upon boot:
 
 - **Regular User**:
-  - Email: `user@imovies.com`
-  - Password: `user1234`
+  - Email: `example@ex.com`
+  - Password: `example`
 - **Admin**:
-  - Email: `admin@imovies.com`
-  - Password: `admin1234`
+  - Email: `example@ex.com`
+  - Password: `example`
 
 ---
 
