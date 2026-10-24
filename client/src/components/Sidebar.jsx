@@ -41,6 +41,7 @@ function Sidebar({ mobileOpen = false, setMobileOpen = () => {} }) {
     { label: 'Theatres', path: '/addtheatre', icon: 'fa-solid fa-building' },
     { label: 'Schedule Shows', path: '/addshow', icon: 'fa-solid fa-calendar-plus' },
     { label: 'Transactions & Refunds', path: '/adminbookings', icon: 'fa-solid fa-money-bill-transfer', badge: 'Live' },
+    { label: 'Manage Users', path: '/adminusers', icon: 'fa-solid fa-users-gear' },
     { label: 'Admin Team', path: '/addadmin', icon: 'fa-solid fa-user-shield' },
   ];
 

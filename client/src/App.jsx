@@ -22,6 +22,7 @@ const AddTheatre = lazy(() => import('./pages/AddTheatre'));
 const AddShow = lazy(() => import('./pages/AddShow'));
 const AddAdmin = lazy(() => import('./pages/AddAdmin'));
 const AdminBookings = lazy(() => import('./pages/AdminBookings'));
+const AdminUsers = lazy(() => import('./pages/AdminUsers'));
 const VerifyEmail = lazy(() => import('./pages/VerifyEmail'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 
@@ -51,6 +52,7 @@ function App() {
             <Route path="/addshow" element={<AdminProtection><AddShow /></AdminProtection>} />
             <Route path="/addadmin" element={<AdminProtection><AddAdmin /></AdminProtection>} />
             <Route path="/adminbookings" element={<AdminProtection><AdminBookings /></AdminProtection>} />
+            <Route path="/adminusers" element={<AdminProtection><AdminUsers /></AdminProtection>} />
           </Routes>
         </Suspense>
       </BrowserRouter>

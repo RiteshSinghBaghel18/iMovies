@@ -120,6 +120,13 @@ function Admin() {
               <i className="fa-solid fa-money-bill-transfer"></i>
               <span>Transactions &amp; Refunds</span>
             </Link>
+            <Link
+              to="/adminusers"
+              className="px-3.5 py-2 rounded-xl bg-[#121216] hover:bg-zinc-800 text-white text-xs font-bold transition border border-zinc-800 flex items-center gap-1.5"
+            >
+              <i className="fa-solid fa-users-gear text-primary"></i>
+              <span>Manage Users</span>
+            </Link>
           </div>
         </div>
 
@@ -139,9 +146,12 @@ function Admin() {
                 👥
               </div>
             </div>
-            <span className="text-[11px] text-primary font-semibold block mt-3 flex items-center gap-1">
-              <i className="fa-solid fa-arrow-trend-up"></i> Active registered accounts
-            </span>
+            <Link
+              to="/adminusers"
+              className="text-[11px] text-primary hover:underline font-semibold block mt-3 flex items-center gap-1"
+            >
+              <i className="fa-solid fa-users"></i> Manage &amp; Delete Users →
+            </Link>
           </div>
 
           <div className="bg-[#121216] p-6 rounded-2xl border border-zinc-800 shadow-xl relative overflow-hidden group hover:border-primary/50 transition duration-300">
