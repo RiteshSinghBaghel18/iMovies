@@ -83,7 +83,7 @@ function MovieShows() {
     return filteredShows.every((s) => isShowExpired(s.showDate, s.showTime) || s.isExpired);
   }, [filteredShows]);
 
-  // Group shows by Theatre — shows store theatreId as UUID string, theatreName as string
+  // Group shows by Theatre and deduplicate time slots by canonical displayTime
   const groupedByTheatre = useMemo(() => {
     const map = {};
     filteredShows.forEach((show) => {
@@ -92,13 +92,51 @@ function MovieShows() {
         map[groupKey] = {
           theatreName: show.theatreName || 'Cinema',
           location: show.location || 'City Centre',
-          theatre: {},   // will be populated below if available
+          theatre: {},
           shows: [],
         };
       }
       map[groupKey].shows.push(show);
     });
-    return Object.values(map);
+
+    return Object.values(map).map((group) => {
+      // Deduplicate slots within the same cinema auditorium by canonical display time
+      const timeMap = new Map();
+      group.shows.forEach((show) => {
+        const canonicalTime = formatDisplayTime(show.showTime);
+        const existing = timeMap.get(canonicalTime);
+        if (!existing) {
+          timeMap.set(canonicalTime, show);
+        } else {
+          // If a slot duplicate exists, prioritize the active (non-expired) slot
+          const existingExpired = isShowExpired(existing.showDate, existing.showTime) || existing.isExpired;
+          const currentExpired = isShowExpired(show.showDate, show.showTime) || show.isExpired;
+          if (existingExpired && !currentExpired) {
+            timeMap.set(canonicalTime, show);
+          }
+        }
+      });
+
+      // Sort showtimes chronologically
+      const uniqueShows = Array.from(timeMap.values()).sort((a, b) => {
+        const parseMinutes = (tStr) => {
+          const formatted = formatDisplayTime(tStr);
+          const parts = formatted.split(/[: ]/);
+          let h = parseInt(parts[0], 10) || 0;
+          const m = parseInt(parts[1], 10) || 0;
+          const period = (parts[2] || '').toUpperCase();
+          if (period === 'PM' && h < 12) h += 12;
+          if (period === 'AM' && h === 12) h = 0;
+          return h * 60 + m;
+        };
+        return parseMinutes(a.showTime) - parseMinutes(b.showTime);
+      });
+
+      return {
+        ...group,
+        shows: uniqueShows,
+      };
+    });
   }, [filteredShows]);
 
   if (loading) return <Loader />;

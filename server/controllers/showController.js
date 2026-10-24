@@ -59,9 +59,10 @@ const getAllShows = async (req, res) => {
         filter.movieId = req.query.movieId;
       }
     }
-    const shows = await Show.find(filter).sort({ createdAt: -1 });
+    const shows = await Show.find(filter).select('-tickets').sort({ createdAt: -1 });
     const enrichedShows = shows.map((s) => {
       const obj = s.toObject ? s.toObject() : { ...s };
+      obj.showTime = formatDisplayTime(obj.showTime);
       obj.isExpired = isShowExpired(obj.showDate, obj.showTime);
       return obj;
     });
@@ -118,6 +119,7 @@ const getShowById = async (req, res) => {
     }
 
     const showObj = show.toObject ? show.toObject() : { ...show };
+    showObj.showTime = formatDisplayTime(showObj.showTime);
     showObj.isExpired = isShowExpired(showObj.showDate, showObj.showTime);
 
     return res.status(200).json({
@@ -207,7 +209,7 @@ const addShow = async (req, res) => {
       }
     }
 
-    // Determine target times
+    // Determine target times, normalized to canonical format
     let targetTimes = [];
     if (Array.isArray(showTimes) && showTimes.length > 0) {
       targetTimes = showTimes.filter(Boolean);
@@ -216,6 +218,7 @@ const addShow = async (req, res) => {
     } else {
       targetTimes = ['10:30 AM', '01:00 PM', '04:15 PM', '07:30 PM', '10:15 PM'];
     }
+    targetTimes = [...new Set(targetTimes.map(formatDisplayTime))];
 
     const adminEmail = req.user?.email || req.body.adminEmail || 'admin@imovies.com';
     const movieIdStr = String(movie._id);
@@ -237,13 +240,37 @@ const addShow = async (req, res) => {
         for (const timeStr of targetTimes) {
           // Check if show already exists for this slot
           const existing = await Show.findOne({
-            movieId: movieIdStr,
-            theatreId: tUUID,
-            showDate: dateStr,
-            showTime: timeStr
+            $and: [
+              {
+                $or: [
+                  { movieId: movieIdStr },
+                  ...(movie.tmdbId ? [{ movieId: String(movie.tmdbId) }] : []),
+                  { movieName: movie.movieName }
+                ]
+              },
+              {
+                $or: [
+                  { theatreId: tUUID },
+                  { theatreId: String(theatre._id) }
+                ]
+              },
+              { showDate: dateStr },
+              {
+                $or: [
+                  { showTime: timeStr },
+                  { showTime: timeStr.replace(/^0/, '') }
+                ]
+              }
+            ]
           });
 
           if (existing) {
+            if (existing.showTime !== timeStr || !existing.theatreName) {
+              existing.showTime = timeStr;
+              existing.theatreName = theatreName;
+              existing.location = location;
+              await existing.save();
+            }
             createdShows.push(existing);
             continue;
           }
@@ -370,35 +397,44 @@ const getShowsByMovieId = async (req, res) => {
       }
     }
 
-    let shows = await Show.find({ $or: queryConditions }).sort({ showDate: 1, showTime: 1 });
+    let shows = await Show.find({ $or: queryConditions }).select('-tickets').sort({ showDate: 1, showTime: 1 });
 
-    // If no shows exist for this movie, automatically generate default shows
-    if (shows.length === 0 && movie) {
+    // ONLY generate fallback default shows for imported TMDB catalog movies.
+    // NEVER auto-generate shows for admin-added or custom movies!
+    const isTmdbMovie = movie && movie.tmdbId && !movie.isAdminAdded && !movie.isCustom;
+    if (shows.length === 0 && isTmdbMovie) {
       await ensureShowsForMovie(movie, 7);
-      shows = await Show.find({ $or: queryConditions }).sort({ showDate: 1, showTime: 1 });
+      shows = await Show.find({ $or: queryConditions }).select('-tickets').sort({ showDate: 1, showTime: 1 });
     }
 
-    // Enrich shows with theatre details and isExpired flag
-    const enrichedShows = await Promise.all(
-      shows.map(async (s) => {
-        const obj = s.toObject ? s.toObject() : { ...s };
+    // Pre-cache all theatres once to eliminate N+1 database queries
+    const allTheatres = await Theatre.find();
+    const theatreMap = new Map();
+    allTheatres.forEach((t) => {
+      theatreMap.set(String(t.theatreId), t);
+      theatreMap.set(String(t._id), t);
+    });
 
-        // Ensure theatreName and location are never blank or fallback
-        if (!obj.theatreName || obj.theatreName === 'Cinema' || !obj.location) {
-          const t = await resolveTheatre(obj.theatreId);
-          if (t) {
-            obj.theatreName = t.theatreName;
-            obj.location = t.location;
-            obj.balconyPrice = obj.balconyPrice || t.balconySeatPrice;
-            obj.middlePrice = obj.middlePrice || t.middleSeatPrice;
-            obj.lowerPrice = obj.lowerPrice || t.lowerSeatPrice;
-          }
+    // Enrich shows with theatre details and isExpired flag synchronously in-memory
+    const enrichedShows = shows.map((s) => {
+      const obj = s.toObject ? s.toObject() : { ...s };
+      obj.showTime = formatDisplayTime(obj.showTime);
+
+      // Ensure theatreName and location are never blank or fallback
+      if (!obj.theatreName || obj.theatreName === 'Cinema' || !obj.location) {
+        const t = theatreMap.get(String(obj.theatreId));
+        if (t) {
+          obj.theatreName = t.theatreName;
+          obj.location = t.location;
+          obj.balconyPrice = obj.balconyPrice || t.balconySeatPrice;
+          obj.middlePrice = obj.middlePrice || t.middleSeatPrice;
+          obj.lowerPrice = obj.lowerPrice || t.lowerSeatPrice;
         }
+      }
 
-        obj.isExpired = isShowExpired(obj.showDate, obj.showTime);
-        return obj;
-      })
-    );
+      obj.isExpired = isShowExpired(obj.showDate, obj.showTime);
+      return obj;
+    });
 
     return res.status(200).json({
       success: true,

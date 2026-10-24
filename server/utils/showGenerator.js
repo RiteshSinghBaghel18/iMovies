@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const mongoose = require('mongoose');
 const Show = require('../models/showModel');
 const Theatre = require('../models/theatreModel');
+const { formatDisplayTime } = require('./showTimeHelper');
 
 /**
  * Generate seat map tickets object based on theatre configuration
@@ -160,9 +161,10 @@ const ensureShowsForMovie = async (movieDoc, days = 7, specificTheatreIds = null
     theatres = await ensureTheatresExist();
   }
 
-  const showTimes = Array.isArray(customTimes) && customTimes.length > 0
+  const rawTimes = Array.isArray(customTimes) && customTimes.length > 0
     ? customTimes
     : ['10:30 AM', '01:00 PM', '04:15 PM', '07:30 PM', '10:15 PM'];
+  const showTimes = [...new Set(rawTimes.map(formatDisplayTime))];
 
   // Generate date strings using local year, month, date to prevent UTC day-lag
   const today = new Date();
@@ -175,14 +177,14 @@ const ensureShowsForMovie = async (movieDoc, days = 7, specificTheatreIds = null
     dates.push(`${y}-${m}-${day}`);
   }
 
-  // Check which shows currently exist for this movie for these dates
+  // Check which shows currently exist for this movie for these dates (exclude heavy tickets map)
   const existingShows = await Show.find({
     movieId: movieIdStr,
     showDate: { $in: dates }
-  });
+  }).select('theatreId showDate showTime');
 
   const existingSet = new Set(
-    existingShows.map((s) => `${s.theatreId}_${s.showDate}_${s.showTime}`)
+    existingShows.map((s) => `${s.theatreId}_${s.showDate}_${formatDisplayTime(s.showTime)}`)
   );
 
   const showsToInsert = [];
@@ -191,7 +193,8 @@ const ensureShowsForMovie = async (movieDoc, days = 7, specificTheatreIds = null
     const tId = String(theatre.theatreId || theatre._id);
     for (const dateStr of dates) {
       for (const time of showTimes) {
-        const key = `${tId}_${dateStr}_${time}`;
+        const canonicalTime = formatDisplayTime(time);
+        const key = `${tId}_${dateStr}_${canonicalTime}`;
         if (!existingSet.has(key)) {
           const tickets = generateTicketsForTheatre(theatre);
           showsToInsert.push({
@@ -203,7 +206,7 @@ const ensureShowsForMovie = async (movieDoc, days = 7, specificTheatreIds = null
             theatreName: theatre.theatreName,
             location: theatre.location || 'City Centre',
             showDate: dateStr,
-            showTime: time,
+            showTime: canonicalTime,
             ticketPrice: theatre.middleSeatPrice || 250,
             balconyPrice: theatre.balconySeatPrice || 350,
             middlePrice: theatre.middleSeatPrice || 250,

@@ -80,8 +80,8 @@ function AddMovie() {
         const t = theatresRes.value.data;
         const tList = Array.isArray(t) ? t : t?.theatres || t?.data || [];
         setTheatres(tList);
-        // Default to assigning all partner theatres
-        setSelectedTheatres(tList.map((th) => th.theatreId || th._id || th.id));
+        // Leave unselected by default so admin can assign theatres precisely
+        setSelectedTheatres([]);
       }
     } catch (err) {
       console.error(err);

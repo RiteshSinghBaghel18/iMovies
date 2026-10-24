@@ -578,14 +578,15 @@ const addMovie = async (req, res) => {
     const movie = new Movie(movieData);
     await movie.save();
 
-    // Assign theatres and generate showtimes immediately
-    const targetTheatres = Array.isArray(assignedTheatres) && assignedTheatres.length > 0 ? assignedTheatres : null;
-    const targetTimes = Array.isArray(showTimes) && showTimes.length > 0 ? showTimes : null;
-    await ensureShowsForMovie(movie, 7, targetTheatres, targetTimes);
+    // Assign theatres and generate showtimes ONLY IF admin explicitly selected theatres
+    if (Array.isArray(assignedTheatres) && assignedTheatres.length > 0) {
+      const targetTimes = Array.isArray(showTimes) && showTimes.length > 0 ? showTimes : null;
+      await ensureShowsForMovie(movie, 7, assignedTheatres, targetTimes);
+    }
 
     return res.status(201).json({
       success: true,
-      message: 'Movie added successfully and published at top of user page with theatre showtimes',
+      message: 'Movie added successfully and published at top of user page',
       data: movie,
       movie
     });

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import DashboardLayout from '../components/DashboardLayout';
 import Loader from '../components/Loader';
 import { api } from '../utils/api';
+import { formatDisplayTime } from '../utils/showTimeHelper';
 import dayjs from 'dayjs';
 
 const PRESET_TIMES = ['10:30 AM', '01:00 PM', '04:15 PM', '07:30 PM', '10:15 PM'];
@@ -14,7 +15,6 @@ function AddShow() {
 
   const [movies, setMovies] = useState([]);
   const [theatres, setTheatres] = useState([]);
-  const [shows, setShows] = useState([]);
   const [movieShows, setMovieShows] = useState([]);
   const [loadingMovieShows, setLoadingMovieShows] = useState(false);
 
@@ -22,7 +22,7 @@ function AddShow() {
     movieId: initialMovieId,
     theatreId: '',
     showDate: dayjs().format('YYYY-MM-DD'),
-    showTime: '18:00',
+    showTime: '07:30 PM',
     ticketPrice: 250,
     scheduleFullWeek: false,
   });
@@ -51,10 +51,9 @@ function AddShow() {
   const fetchAllData = async () => {
     try {
       setDataLoading(true);
-      const [moviesRes, theatresRes, showsRes] = await Promise.allSettled([
+      const [moviesRes, theatresRes] = await Promise.allSettled([
         api.getAllMovies(),
         api.getAllTheatres(),
-        api.getAllShows(),
       ]);
 
       let selectedMid = formData.movieId;
@@ -76,12 +75,6 @@ function AddShow() {
         if (tList.length > 0 && !formData.theatreId) {
           setFormData((prev) => ({ ...prev, theatreId: tList[0].theatreId || tList[0]._id || tList[0].id }));
         }
-      }
-
-      if (showsRes.status === 'fulfilled') {
-        const s = showsRes.value.data;
-        const sList = Array.isArray(s) ? s : s?.shows || s?.data || [];
-        setShows(sList);
       }
 
       if (selectedMid) {
@@ -125,11 +118,12 @@ function AddShow() {
 
     try {
       setLoading(true);
+      const normalizedTime = formatDisplayTime(formData.showTime);
       const payload = {
         movieId: formData.movieId,
         theatreId: formData.theatreId,
         showDate: formData.showDate,
-        showTime: formData.showTime,
+        showTime: normalizedTime,
         ticketPrice: Number(formData.ticketPrice) || 250,
         days: formData.scheduleFullWeek ? 7 : 1,
       };
@@ -137,7 +131,6 @@ function AddShow() {
       const res = await api.addShow(payload);
       if (res.data?.success || res.status === 200 || res.status === 201) {
         toast.success(res.data?.message || 'Showtime(s) scheduled successfully!');
-        fetchAllData();
         fetchShowsForSelectedMovie(formData.movieId);
       } else {
         toast.error(res.data?.message || 'Failed to add show');
