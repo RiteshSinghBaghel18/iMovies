@@ -12,7 +12,7 @@ const AVAILABLE_GENRES = [
 ];
 
 const CERTIFICATIONS = ['U', 'U/A', 'A', 'S'];
-const LANGUAGES = ['English', 'Hindi', 'Spanish', 'French', 'Korean', 'Japanese', 'Tamil', 'Telugu'];
+const LANGUAGES = ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'German', 'Italian'];
 const CAST_ROLES = [
   'Lead Actor', 'Lead Actress', 'Supporting Actor', 'Supporting Actress',
   'Villain', 'Director', 'Producer', 'Composer', 'Cinematographer',
@@ -108,6 +108,9 @@ function AddMovie() {
     if (!formData.description.trim() || formData.description.trim().length < 10) {
       toast.error('Description must be at least 10 characters'); return;
     }
+    if (!formData.posterUrl.trim()) {
+      toast.error('Poster image URL is required. Movies without posters cannot be published.'); return;
+    }
     if (selectedGenres.length === 0) { toast.error('Please select at least one genre'); return; }
     if (!formData.duration.trim()) { toast.error('Duration is required'); return; }
 
@@ -130,7 +133,7 @@ function AddMovie() {
 
       const res = await api.addMovie(payload);
       if (res.data?.success || res.status === 200 || res.status === 201) {
-        toast.success(`🎬 Movie "${formData.movieName}" added successfully!`);
+        toast.success(`🎬 Movie "${formData.movieName}" added successfully and published at top of user page!`);
         setFormData({
           movieName: '', description: '', releaseDate: '',
           language: 'English', duration: '', certification: 'U/A',
@@ -264,12 +267,12 @@ function AddMovie() {
                 {/* Poster URL + Trailer URL */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className={labelCls}>Poster Image URL</label>
-                    <input type="text" name="posterUrl" value={formData.posterUrl} onChange={handleChange}
-                      placeholder="Poster Image"
+                    <label className={labelCls}>Poster Image URL *</label>
+                    <input type="text" name="posterUrl" required value={formData.posterUrl} onChange={handleChange}
+                      placeholder="https://... (direct image URL required)"
                       className={inputCls} />
                     <p className={`text-[11px] mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Use a direct image link (not a webpage URL). Preview appears on the left.
+                      Required direct image link (.jpg, .png). Movies without posters cannot be added.
                     </p>
                   </div>
                   <div>

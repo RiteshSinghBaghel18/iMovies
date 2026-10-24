@@ -21,6 +21,7 @@ function Home() {
 
   const [movies, setMovies] = useState([]);
   const [sections, setSections] = useState({
+    recentlyAdded: [],
     trending: [],
     nowPlaying: [],
     topRated: [],
@@ -170,9 +171,10 @@ function Home() {
 
   const today = dayjs().startOf('day');
 
-  // Top featured movie for billboard hero
+  // Top featured movie for billboard hero (Prioritize newly added by Admin at top)
   const featuredMovie = useMemo(() => {
     return (
+      sections.recentlyAdded?.[0] ||
       sections.trending?.[0] ||
       movies.find((m) => m.backdropUrl || m.posterUrl) ||
       movies[0]
@@ -535,6 +537,36 @@ function Home() {
         {/* ── CURATED MULTI-SECTION HOME PAGE (When on 'all' without active search) ── */}
         {activeCategory === 'all' && !searchQuery && !hasActiveFilters && (
           <div className="space-y-14">
+            {/* 0. NEWLY ADDED MOVIES (Shown at top whenever admin adds a new movie) */}
+            {sections.recentlyAdded && sections.recentlyAdded.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b border-primary/40 pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="w-1.5 h-6 bg-primary animate-pulse"></span>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase flex items-center gap-2">
+                      <i className="fa-solid fa-sparkles text-primary text-base"></i>
+                      Newly Added Premieres
+                    </h2>
+                    <span className="text-xs px-2.5 py-0.5 font-black uppercase bg-primary text-black tracking-wider shadow-md">
+                      NEW AT TOP
+                    </span>
+                  </div>
+                  <span className="text-xs font-semibold text-zinc-400">
+                    {sections.recentlyAdded.length} Titles
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 sm:gap-5">
+                  {sections.recentlyAdded.slice(0, 6).map((movie) => (
+                    <MovieCard
+                      key={`recent-${movie._id || movie.id}`}
+                      movie={movie}
+                      isFavorited={favorites.includes(movie._id || movie.id)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* 1. TRENDING & POPULAR BLOCKBUSTERS */}
             {sections.trending && sections.trending.length > 0 && (
               <section className="space-y-4">

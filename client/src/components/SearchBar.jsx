@@ -3,7 +3,6 @@ import { api } from '../utils/api';
 
 const COUNTRIES = [
   'All Countries',
-  'India',
   'United States',
   'United Kingdom',
   'Canada',
@@ -40,15 +39,11 @@ const GENRES = [
 const LANGUAGES = [
   'All Languages',
   'English',
-  'Hindi',
   'Korean',
   'Japanese',
   'Spanish',
   'French',
   'German',
-  'Tamil',
-  'Telugu',
-  'Malayalam',
   'Chinese',
   'Arabic',
 ];
@@ -77,8 +72,7 @@ function SearchBar({
         const theatreList = Array.isArray(res.data) ? res.data : res.data?.theatres || res.data?.data || [];
         const countrySet = new Set(COUNTRIES);
         theatreList.forEach((t) => {
-          if (t.location && t.location.trim()) {
-            // If location has country information or custom location name
+          if (t.location && t.location.trim() && !/india/i.test(t.location)) {
             countrySet.add(t.location.trim());
           }
         });

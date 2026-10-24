@@ -49,7 +49,6 @@ let genreCache = null;
 
 const ISO_LANG_MAP = {
   en: 'English',
-  hi: 'Hindi',
   es: 'Spanish',
   fr: 'French',
   ko: 'Korean',
@@ -59,13 +58,36 @@ const ISO_LANG_MAP = {
   it: 'Italian',
   ru: 'Russian',
   pt: 'Portuguese',
-  ta: 'Tamil',
-  te: 'Telugu',
-  ml: 'Malayalam',
-  kn: 'Kannada',
-  pa: 'Punjabi',
   ar: 'Arabic',
   tr: 'Turkish'
+};
+
+const EXCLUDED_LANG_CODES = ['hi', 'ta', 'te', 'ml', 'kn', 'pa', 'mr', 'gu', 'bn'];
+const EXCLUDED_LANG_NAMES = [
+  'hindi', 'tamil', 'telugu', 'telgu', 'malayalam', 'kannada', 'punjabi', 'marathi', 'gujarati', 'bengali', 'indian'
+];
+
+/**
+ * Filter out Indian / regional movies and movies without valid posters
+ */
+const isExcludedMovie = (tmdbMovie) => {
+  if (!tmdbMovie) return true;
+  // Must have a real poster - never allow movies without posters
+  if (!tmdbMovie.poster_path && !tmdbMovie.posterUrl) return true;
+
+  const lang = (tmdbMovie.original_language || tmdbMovie.language || '').toLowerCase();
+  if (EXCLUDED_LANG_CODES.includes(lang) || EXCLUDED_LANG_NAMES.includes(lang)) {
+    return true;
+  }
+
+  if (Array.isArray(tmdbMovie.origin_country) && tmdbMovie.origin_country.includes('IN')) {
+    return true;
+  }
+  if (Array.isArray(tmdbMovie.production_countries) && tmdbMovie.production_countries.some(c => c.iso_3166_1 === 'IN')) {
+    return true;
+  }
+
+  return false;
 };
 
 /**
@@ -171,6 +193,15 @@ const fetchMovieTrailerUrl = async (tmdbId, movieTitle) => {
  * Format raw TMDB movie into standard iMovies schema format
  */
 const formatMovieData = (tmdbMovie, details = null, genreMap = {}, categoryTag = null) => {
+  if (isExcludedMovie(tmdbMovie)) {
+    return null;
+  }
+
+  const posterPath = tmdbMovie.poster_path || details?.poster_path;
+  if (!posterPath) {
+    return null; // Reject movies without valid posters
+  }
+
   const movieTitle = (tmdbMovie.title || tmdbMovie.original_title || 'Untitled Movie').trim();
 
   // Extract genres
@@ -194,12 +225,11 @@ const formatMovieData = (tmdbMovie, details = null, genreMap = {}, categoryTag =
   const runtimeMin = details?.runtime;
   const duration = formatRuntime(runtimeMin);
 
-  // Posters & Backdrops
-  const posterUrl = tmdbMovie.poster_path
-    ? `${TMDB_IMAGE_BASE}${tmdbMovie.poster_path}`
-    : 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&h=600&fit=crop';
-  const backdropUrl = tmdbMovie.backdrop_path
-    ? `${TMDB_BACKDROP_BASE}${tmdbMovie.backdrop_path}`
+  // Posters & Backdrops (Authentic TMDB only, no broken placeholders)
+  const posterUrl = `${TMDB_IMAGE_BASE}${posterPath}`;
+  const backdropPath = tmdbMovie.backdrop_path || details?.backdrop_path;
+  const backdropUrl = backdropPath
+    ? `${TMDB_BACKDROP_BASE}${backdropPath}`
     : posterUrl;
 
   // Real Trailer URL extraction
@@ -349,6 +379,8 @@ const getMovieDetails = async (tmdbId) => {
  */
 const syncMovieToDb = async (tmdbMovie, fetchDetails = true, categoryTag = null) => {
   try {
+    if (isExcludedMovie(tmdbMovie)) return null;
+
     const genreMap = await fetchGenreMap();
     let details = null;
     if (fetchDetails && tmdbMovie.id) {
@@ -356,6 +388,7 @@ const syncMovieToDb = async (tmdbMovie, fetchDetails = true, categoryTag = null)
     }
 
     const formatted = formatMovieData(tmdbMovie, details, genreMap, categoryTag);
+    if (!formatted) return null;
 
     let query = {};
     if (formatted.tmdbId) {
@@ -390,7 +423,7 @@ const syncNowPlayingMovies = async (limit = 12) => {
     console.log('[tmdbService] Syncing live Now Playing movies with official trailers from TMDB...');
     const genreMap = await fetchGenreMap();
     const data = await getNowPlaying(1);
-    const results = (data.results || []).slice(0, limit);
+    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
 
     const savedMovies = [];
     for (const raw of results) {
@@ -402,6 +435,7 @@ const syncNowPlayingMovies = async (limit = 12) => {
         // non-fatal
       }
       const formatted = formatMovieData(raw, details, genreMap, 'now_playing');
+      if (!formatted) continue;
       const doc = await Movie.findOneAndUpdate(
         { tmdbId: formatted.tmdbId },
         {
@@ -429,7 +463,7 @@ const syncPopularMovies = async (limit = 12) => {
     console.log('[tmdbService] Syncing live Popular/Trending movies with official trailers from TMDB...');
     const genreMap = await fetchGenreMap();
     const data = await getPopular(1);
-    const results = (data.results || []).slice(0, limit);
+    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
 
     const savedMovies = [];
     for (const raw of results) {
@@ -441,6 +475,8 @@ const syncPopularMovies = async (limit = 12) => {
         // non-fatal
       }
       const formatted = formatMovieData(raw, details, genreMap, 'popular');
+      if (!formatted) continue;
+
       const doc = await Movie.findOneAndUpdate(
         { tmdbId: formatted.tmdbId },
         {
@@ -468,7 +504,7 @@ const syncTopRatedMovies = async (limit = 10) => {
     console.log('[tmdbService] Syncing live Top Rated movies with official trailers from TMDB...');
     const genreMap = await fetchGenreMap();
     const data = await getTopRated(1);
-    const results = (data.results || []).slice(0, limit);
+    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
 
     const savedMovies = [];
     for (const raw of results) {
@@ -480,6 +516,8 @@ const syncTopRatedMovies = async (limit = 10) => {
         // non-fatal
       }
       const formatted = formatMovieData(raw, details, genreMap, 'top_rated');
+      if (!formatted) continue;
+
       const doc = await Movie.findOneAndUpdate(
         { tmdbId: formatted.tmdbId },
         {
@@ -507,7 +545,7 @@ const syncUpcomingMovies = async (limit = 10) => {
     console.log('[tmdbService] Syncing live Upcoming movies with official trailers from TMDB...');
     const genreMap = await fetchGenreMap();
     const data = await getUpcoming(1);
-    const results = (data.results || []).slice(0, limit);
+    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
 
     const savedMovies = [];
     for (const raw of results) {
@@ -519,6 +557,8 @@ const syncUpcomingMovies = async (limit = 10) => {
         // non-fatal
       }
       const formatted = formatMovieData(raw, details, genreMap, 'upcoming');
+      if (!formatted) continue;
+
       const doc = await Movie.findOneAndUpdate(
         { tmdbId: formatted.tmdbId },
         {
@@ -544,6 +584,9 @@ module.exports = {
   tmdbRequest,
   fetchGenreMap,
   formatMovieData,
+  isExcludedMovie,
+  EXCLUDED_LANG_CODES,
+  EXCLUDED_LANG_NAMES,
   extractTrailerUrl,
   fetchMovieVideos,
   fetchMovieTrailerUrl,

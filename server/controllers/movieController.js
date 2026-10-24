@@ -4,6 +4,17 @@ const Show = require('../models/showModel');
 const tmdbService = require('../services/tmdbService');
 const { ensureShowsForMovie } = require('../utils/showGenerator');
 
+// Excluded languages: Hindi, Tamil, Telugu, and Indian regional languages
+const EXCLUDED_LANGUAGES_REGEX = /^(Hindi|Tamil|Telugu|Malayalam|Kannada|Punjabi|Marathi|Gujarati|Bengali|Indian|hi|ta|te|ml|kn|pa|mr|gu|bn)$/i;
+
+// Filter for valid poster (no empty string, no null, no placeholders)
+const VALID_POSTER_FILTER = {
+  $exists: true,
+  $ne: '',
+  $nin: [null, ''],
+  $not: /placeholder|unsplash\.com\/photo-1489599849927-2ee91cede3ba/i
+};
+
 // Get all movies with dynamic live TMDB market integration and optional filters (?genre=&language=&search=)
 const getAllMovies = async (req, res) => {
   try {
@@ -16,7 +27,9 @@ const getAllMovies = async (req, res) => {
           $or: [
             { movieName: { $regex: search.trim(), $options: 'i' } },
             { description: { $regex: search.trim(), $options: 'i' } }
-          ]
+          ],
+          language: { $not: EXCLUDED_LANGUAGES_REGEX },
+          posterUrl: VALID_POSTER_FILTER
         });
 
         if (localMatches === 0) {
@@ -32,6 +45,8 @@ const getAllMovies = async (req, res) => {
               // non-fatal
             }
             const formatted = tmdbService.formatMovieData(item, details, genreMap);
+            if (!formatted) continue;
+
             const doc = await Movie.findOneAndUpdate(
               { tmdbId: formatted.tmdbId },
               { $set: formatted },
@@ -48,7 +63,11 @@ const getAllMovies = async (req, res) => {
     }
 
     // 2. Check if DB has enough TMDB live movies; if not, sync from TMDB
-    const count = await Movie.countDocuments({ tmdbId: { $exists: true, $ne: null } });
+    const count = await Movie.countDocuments({
+      tmdbId: { $exists: true, $ne: null },
+      language: { $not: EXCLUDED_LANGUAGES_REGEX },
+      posterUrl: VALID_POSTER_FILTER
+    });
     if (count < 10 || refresh === 'true') {
       try {
         console.log('[movieController] Seeding/Syncing live market movies with real trailers from TMDB...');
@@ -67,6 +86,16 @@ const getAllMovies = async (req, res) => {
 
     // 3. Build MongoDB query filter matching search, genre, language, and category
     const andConditions = [];
+
+    // Exclude Hindi, Tamil, Telugu, and Indian movies
+    andConditions.push({
+      language: { $not: EXCLUDED_LANGUAGES_REGEX }
+    });
+
+    // Exclude movies without valid posters
+    andConditions.push({
+      posterUrl: VALID_POSTER_FILTER
+    });
 
     // Exclude any legacy mock movies
     andConditions.push({
@@ -109,15 +138,11 @@ const getAllMovies = async (req, res) => {
       const lTerm = language.trim();
       const langMap = {
         english: 'en',
-        hindi: 'hi',
         korean: 'ko',
         japanese: 'ja',
         spanish: 'es',
         french: 'fr',
         german: 'de',
-        tamil: 'ta',
-        telugu: 'te',
-        malayalam: 'ml',
         chinese: 'zh'
       };
       const code = langMap[lTerm.toLowerCase()];
@@ -158,10 +183,12 @@ const getAllMovies = async (req, res) => {
     if (category) {
       if (category === 'nowPlaying' || category === 'now_playing') {
         andConditions.push({
-          $or: [{ categories: 'now_playing' }, { releaseDate: { $lte: new Date() } }]
+          $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { releaseDate: { $lte: new Date() } }]
         });
       } else if (category === 'popular') {
-        andConditions.push({ categories: 'popular' });
+        andConditions.push({
+          $or: [{ categories: 'popular' }, { categories: 'recently_added' }]
+        });
       } else if (category === 'top_rated') {
         andConditions.push({
           $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.0 } }]
@@ -175,9 +202,10 @@ const getAllMovies = async (req, res) => {
 
     const finalFilter = andConditions.length > 0 ? { $and: andConditions } : {};
 
-    let sort = { releaseDate: -1, createdAt: -1 };
+    // Newly added movies (by Admin) ALWAYS appear at the top
+    let sort = { createdAt: -1, releaseDate: -1, _id: -1 };
     if (category === 'popular') {
-      sort = { voteCount: -1, rating: -1 };
+      sort = { createdAt: -1, voteCount: -1, rating: -1 };
     } else if (category === 'top_rated') {
       sort = { rating: -1, voteCount: -1 };
     } else if (category === 'upcoming') {
@@ -205,7 +233,11 @@ const getAllMovies = async (req, res) => {
 // Curated movie sections endpoint for Home page
 const getMovieSections = async (req, res) => {
   try {
-    const count = await Movie.countDocuments({ tmdbId: { $exists: true, $ne: null } });
+    const count = await Movie.countDocuments({
+      tmdbId: { $exists: true, $ne: null },
+      language: { $not: EXCLUDED_LANGUAGES_REGEX },
+      posterUrl: VALID_POSTER_FILTER
+    });
     if (count < 15) {
       try {
         await tmdbService.syncNowPlayingMovies(12);
@@ -219,35 +251,56 @@ const getMovieSections = async (req, res) => {
 
     const today = new Date();
 
-    const [trending, nowPlaying, topRated, upcoming] = await Promise.all([
-      Movie.find({
-        categories: 'popular',
-        movieName: { $nin: ['Galactic Storm', 'Midnight Shadows', 'Laughing Paradise', 'Eternal Hearts', 'Shadow Protocol', "Dragon's Peak"] }
-      }).sort({ voteCount: -1, rating: -1 }).limit(12),
+    const baseFilter = {
+      language: { $not: EXCLUDED_LANGUAGES_REGEX },
+      posterUrl: VALID_POSTER_FILTER,
+      movieName: {
+        $nin: [
+          'Galactic Storm',
+          'Midnight Shadows',
+          'Laughing Paradise',
+          'Eternal Hearts',
+          'Shadow Protocol',
+          "Dragon's Peak"
+        ]
+      }
+    };
 
-      Movie.find({
-        $or: [{ categories: 'now_playing' }, { releaseDate: { $lte: today } }],
-        movieName: { $nin: ['Galactic Storm', 'Midnight Shadows', 'Laughing Paradise', 'Eternal Hearts', 'Shadow Protocol', "Dragon's Peak"] }
-      }).sort({ releaseDate: -1 }).limit(12),
+    const [recentlyAdded, trending, nowPlaying, topRated, upcoming] = await Promise.all([
+      // 1. Newly Added (Admin created or latest additions - always shown at top)
+      Movie.find(baseFilter).sort({ createdAt: -1, _id: -1 }).limit(12),
 
+      // 2. Trending / Popular
       Movie.find({
-        $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.5 } }],
-        movieName: { $nin: ['Galactic Storm', 'Midnight Shadows', 'Laughing Paradise', 'Eternal Hearts', 'Shadow Protocol', "Dragon's Peak"] }
+        ...baseFilter,
+        $or: [{ categories: 'popular' }, { categories: 'recently_added' }]
+      }).sort({ createdAt: -1, voteCount: -1, rating: -1 }).limit(12),
+
+      // 3. Now Playing
+      Movie.find({
+        ...baseFilter,
+        $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { releaseDate: { $lte: today } }]
+      }).sort({ createdAt: -1, releaseDate: -1 }).limit(12),
+
+      // 4. Top Rated
+      Movie.find({
+        ...baseFilter,
+        $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.5 } }]
       }).sort({ rating: -1, voteCount: -1 }).limit(12),
 
+      // 5. Upcoming
       Movie.find({
-        $or: [{ categories: 'upcoming' }, { releaseDate: { $gt: today } }],
-        movieName: { $nin: ['Galactic Storm', 'Midnight Shadows', 'Laughing Paradise', 'Eternal Hearts', 'Shadow Protocol', "Dragon's Peak"] }
+        ...baseFilter,
+        $or: [{ categories: 'upcoming' }, { releaseDate: { $gt: today } }]
       }).sort({ releaseDate: 1 }).limit(12)
     ]);
 
-    const allMovies = await Movie.find({
-      movieName: { $nin: ['Galactic Storm', 'Midnight Shadows', 'Laughing Paradise', 'Eternal Hearts', 'Shadow Protocol', "Dragon's Peak"] }
-    }).sort({ releaseDate: -1 }).limit(20);
+    const allMovies = recentlyAdded.length > 0 ? recentlyAdded : await Movie.find(baseFilter).sort({ createdAt: -1 }).limit(20);
 
     return res.status(200).json({
       success: true,
       sections: {
+        recentlyAdded,
         trending: trending.length > 0 ? trending : allMovies.slice(0, 10),
         nowPlaying: nowPlaying.length > 0 ? nowPlaying : allMovies.slice(0, 12),
         topRated: topRated.length > 0 ? topRated : allMovies.filter(m => m.rating >= 7),
@@ -337,9 +390,9 @@ const getMarketNowPlaying = async (req, res) => {
     const data = await tmdbService.getNowPlaying(page);
     const genreMap = await tmdbService.fetchGenreMap();
 
-    const formattedMovies = (data.results || []).map(m =>
-      tmdbService.formatMovieData(m, null, genreMap, 'now_playing')
-    );
+    const formattedMovies = (data.results || [])
+      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'now_playing'))
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -364,9 +417,9 @@ const getMarketPopular = async (req, res) => {
     const data = await tmdbService.getPopular(page);
     const genreMap = await tmdbService.fetchGenreMap();
 
-    const formattedMovies = (data.results || []).map(m =>
-      tmdbService.formatMovieData(m, null, genreMap, 'popular')
-    );
+    const formattedMovies = (data.results || [])
+      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'popular'))
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -391,9 +444,9 @@ const getMarketUpcoming = async (req, res) => {
     const data = await tmdbService.getUpcoming(page);
     const genreMap = await tmdbService.fetchGenreMap();
 
-    const formattedMovies = (data.results || []).map(m =>
-      tmdbService.formatMovieData(m, null, genreMap, 'upcoming')
-    );
+    const formattedMovies = (data.results || [])
+      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'upcoming'))
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -425,9 +478,9 @@ const searchMarketMovies = async (req, res) => {
     const data = await tmdbService.searchMovies(query.trim(), page);
     const genreMap = await tmdbService.fetchGenreMap();
 
-    const formattedMovies = (data.results || []).map(m =>
-      tmdbService.formatMovieData(m, null, genreMap)
-    );
+    const formattedMovies = (data.results || [])
+      .map(m => tmdbService.formatMovieData(m, null, genreMap))
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -455,7 +508,10 @@ const syncTmdbMovies = async (req, res) => {
     const topRated = await tmdbService.syncTopRatedMovies(10);
     const upcoming = await tmdbService.syncUpcomingMovies(10);
 
-    const allMovies = await Movie.find().sort({ createdAt: -1 });
+    const allMovies = await Movie.find({
+      language: { $not: EXCLUDED_LANGUAGES_REGEX },
+      posterUrl: VALID_POSTER_FILTER
+    }).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -474,17 +530,43 @@ const syncTmdbMovies = async (req, res) => {
   }
 };
 
-// Add a new movie (Admin)
+// Add a new movie (Admin) - Positioned at top of user page
 const addMovie = async (req, res) => {
   try {
-    const movie = new Movie(req.body);
+    const { posterUrl, language } = req.body;
+
+    if (!posterUrl || !posterUrl.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Movie poster image URL is required. Movies without posters cannot be published.'
+      });
+    }
+
+    if (language && EXCLUDED_LANGUAGES_REGEX.test(language.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Hindi, Tamil, Telugu and Indian movies are restricted from publication.'
+      });
+    }
+
+    const movieData = {
+      ...req.body,
+      // Categories to feature in both Now Playing and Trending, plus explicitly as recently_added
+      categories: ['now_playing', 'popular', 'recently_added'],
+      // Set createdAt to now so it will always sort at index 0 (top of the page)
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    const movie = new Movie(movieData);
     await movie.save();
-    // Ensure shows are generated for newly added movie
-    await ensureShowsForMovie(movie, 4);
+
+    // Ensure shows are immediately generated for the newly added movie
+    await ensureShowsForMovie(movie, 7);
 
     return res.status(201).json({
       success: true,
-      message: 'Movie added successfully',
+      message: 'Movie added successfully and published at top of user page',
       data: movie,
       movie
     });

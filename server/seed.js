@@ -60,7 +60,7 @@ const seedData = async () => {
         {
           theatreName: 'iMovies Grand Cineplex',
           theatreId: uuidv4(),
-          location: 'India',
+          location: 'Canada',
           adminEmail: 'admin@imovies.com',
           balconySeatPrice: 350,
           middleSeatPrice: 250,
@@ -94,12 +94,12 @@ const seedData = async () => {
           lowerSeats: { rows: 3, cols: 8 }
         }
       ]);
-      console.log('  🏟️  Default Theatres created for India, United States, United Kingdom');
+      console.log('  🏟️  Default Theatres created for Canada, United States, United Kingdom');
     } else {
-      // Update any legacy city locations to country-based
+      // Update any legacy Indian or city locations to country-based
       await Theatre.updateMany(
-        { location: { $regex: /Mumbai|Delhi|Bangalore|Indore/i } },
-        { $set: { location: 'India' } }
+        { location: { $regex: /India|Mumbai|Delhi|Bangalore|Indore/i } },
+        { $set: { location: 'United States' } }
       );
       await Theatre.updateMany(
         { location: { $regex: /Chicago|New York|Los Angeles/i } },
@@ -107,7 +107,7 @@ const seedData = async () => {
       );
     }
 
-    // --- Remove old legacy mock movies and fake rickroll trailer entries ---
+    // --- Remove old legacy mock movies, Indian regional movies, and movies without posters ---
     const deletedLegacy = await Movie.deleteMany({
       $or: [
         { tmdbId: { $exists: false } },
@@ -124,11 +124,14 @@ const seedData = async () => {
             ]
           }
         },
-        { trailerUrl: { $regex: /dQw4w9WgXcQ/ } }
+        { trailerUrl: { $regex: /dQw4w9WgXcQ/ } },
+        { language: { $regex: /Hindi|Tamil|Telugu|Malayalam|Kannada|Punjabi|Marathi|Gujarati|Bengali|Indian|hi|ta|te/i } },
+        { posterUrl: { $in: ['', null] } },
+        { posterUrl: { $regex: /placeholder|unsplash\.com\/photo-1489599849927-2ee91cede3ba/i } }
       ]
     });
     if (deletedLegacy.deletedCount > 0) {
-      console.log(`  🗑️  Purged ${deletedLegacy.deletedCount} seeded/mock/fake-trailer movies from DB.`);
+      console.log(`  🗑️  Purged ${deletedLegacy.deletedCount} seeded/mock/Indian/no-poster movies from DB.`);
     }
 
     // --- Fetch and Seed Live TMDB Movies across categories with original trailers ---

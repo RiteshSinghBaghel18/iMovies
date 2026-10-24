@@ -188,7 +188,7 @@ function AddTheatre() {
                     className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 text-white focus:outline-none focus:border-primary text-sm"
                   >
                     <option value="">Select Country Location...</option>
-                    {['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'South Korea', 'United Arab Emirates', 'Singapore', 'Spain', 'Italy', 'Mexico', 'Brazil'].map((c) => (
+                    {['United States', 'United Kingdom', 'Canada', 'Australia', 'Germany', 'France', 'Japan', 'South Korea', 'United Arab Emirates', 'Singapore', 'Spain', 'Italy', 'Mexico', 'Brazil'].map((c) => (
                       <option key={c} value={c}>
                         📍 {c}
                       </option>
