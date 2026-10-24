@@ -145,10 +145,6 @@ export const api = {
   issueRefund: (paymentId, data) => apiClient.post(`${API_URL}/api/admin/refund/${paymentId}`, data || {}, { headers: getAuthHeaders() }),
   getAdminDashboardStats: () => apiClient.get(`${API_URL}/api/admin/stats`, { headers: getAuthHeaders() }),
 
-  // Admin User Directory & Account Management
-  getAllUsers: (params) => apiClient.get(`${API_URL}/api/admin/users`, { params, headers: getAuthHeaders() }),
-  deleteUser: (userId) => apiClient.delete(`${API_URL}/api/admin/users/${userId}`, { headers: getAuthHeaders() }),
-
   // Favorites
   toggleFavorite: (data) => apiClient.post(`${API_URL}/api/favorite/toggle`, data, { headers: getAuthHeaders() }),
   addFavorite: (data) => apiClient.post(`${API_URL}/api/favorite/add`, data, { headers: getAuthHeaders() }),

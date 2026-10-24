@@ -128,9 +128,6 @@ function Header() {
                 <Link to="/adminbookings" className={navLinkCls('/adminbookings')}>
                   <i className="fa-solid fa-money-bill-transfer mr-1.5"></i> Transactions & Refunds
                 </Link>
-                <Link to="/adminusers" className={navLinkCls('/adminusers')}>
-                  <i className="fa-solid fa-users mr-1.5"></i> Users
-                </Link>
               </>
             )}
 
@@ -263,9 +260,6 @@ function Header() {
               </Link>
               <Link to="/adminbookings" onClick={() => setIsOpen(false)} className={mobileLinkCls('/adminbookings')}>
                 <i className="fa-solid fa-money-bill-transfer mr-2"></i> Transactions & Refunds
-              </Link>
-              <Link to="/adminusers" onClick={() => setIsOpen(false)} className={mobileLinkCls('/adminusers')}>
-                <i className="fa-solid fa-users mr-2"></i> Manage Users
               </Link>
             </>
           )}

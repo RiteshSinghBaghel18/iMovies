@@ -33,9 +33,4 @@ router.put('/profile', fetchUser, updateProfile);
 router.get('/validate', fetchUser, validateToken);
 router.get('/admin/stats', fetchUser, getAdminStats);
 
-// User directory & management (Admin)
-const { getAllUsers, deleteUser } = require('../controllers/adminController');
-router.get('/users', fetchUser, getAllUsers);
-router.delete('/users/:id', fetchUser, deleteUser);
-
 module.exports = router;
