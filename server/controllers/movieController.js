@@ -171,12 +171,15 @@ const getAllMovies = async (req, res) => {
         const shows = await Show.find({ theatreId: { $in: theatreIds } });
         const movieIds = [...new Set(shows.map(s => s.movieId))];
         if (movieIds.length > 0) {
-          andConditions.push({
-            $or: [
-              { _id: { $in: movieIds } },
-              { tmdbId: { $in: movieIds.filter(id => !isNaN(id)) } }
-            ]
-          });
+          const mongoose = require('mongoose');
+          const validObjectIds = movieIds.filter(id => mongoose.isValidObjectId(id));
+          const validNumericIds = movieIds.map(Number).filter(id => !isNaN(id) && id > 0);
+          const idOr = [];
+          if (validObjectIds.length > 0) idOr.push({ _id: { $in: validObjectIds } });
+          if (validNumericIds.length > 0) idOr.push({ tmdbId: { $in: validNumericIds } });
+          if (idOr.length > 0) {
+            andConditions.push({ $or: idOr });
+          }
         }
       }
     }
@@ -544,10 +547,10 @@ const syncTmdbMovies = async (req, res) => {
   }
 };
 
-// Add a new movie (Admin) - Positioned at top of user page
+// Add a new movie (Admin) - Positioned at top of user page with theatre assignment
 const addMovie = async (req, res) => {
   try {
-    const { movieName, posterUrl, description, language } = req.body;
+    const { movieName, posterUrl, description, language, assignedTheatres, showTimes } = req.body;
 
     if (!movieName || !movieName.trim()) {
       return res.status(400).json({
@@ -575,18 +578,14 @@ const addMovie = async (req, res) => {
     const movie = new Movie(movieData);
     await movie.save();
 
-    // Fast-path: Generate theatre schedules in background so HTTP response is INSTANT (< 50ms)
-    setImmediate(async () => {
-      try {
-        await ensureShowsForMovie(movie, 4);
-      } catch (err) {
-        console.warn('[addMovie] Background show generation notice:', err.message);
-      }
-    });
+    // Assign theatres and generate showtimes immediately
+    const targetTheatres = Array.isArray(assignedTheatres) && assignedTheatres.length > 0 ? assignedTheatres : null;
+    const targetTimes = Array.isArray(showTimes) && showTimes.length > 0 ? showTimes : null;
+    await ensureShowsForMovie(movie, 7, targetTheatres, targetTimes);
 
     return res.status(201).json({
       success: true,
-      message: 'Movie added successfully and published at top of user page',
+      message: 'Movie added successfully and published at top of user page with theatre showtimes',
       data: movie,
       movie
     });

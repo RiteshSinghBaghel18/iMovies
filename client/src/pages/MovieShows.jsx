@@ -72,6 +72,17 @@ function MovieShows() {
     });
   }, [shows, selectedDate]);
 
+  // Track dates that have scheduled shows
+  const datesWithShows = useMemo(() => {
+    return [...new Set(shows.map((s) => dayjs(s.showDate).format('YYYY-MM-DD')))].filter(Boolean);
+  }, [shows]);
+
+  // Check if all showtimes for currently selected date have passed
+  const allSlotsExpiredForDate = useMemo(() => {
+    if (filteredShows.length === 0) return false;
+    return filteredShows.every((s) => isShowExpired(s.showDate, s.showTime) || s.isExpired);
+  }, [filteredShows]);
+
   // Group shows by Theatre — shows store theatreId as UUID string, theatreName as string
   const groupedByTheatre = useMemo(() => {
     const map = {};
@@ -164,27 +175,50 @@ function MovieShows() {
       {/* Showtimes Content */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
         {groupedByTheatre.length === 0 ? (
-          <div className="text-center py-20 bg-card/40 rounded-2xl border border-gray-800 max-w-md mx-auto p-8">
-            <div className="text-6xl mb-4">🎟️</div>
-            <h3 className="text-xl font-bold text-white mb-2">No Shows Scheduled</h3>
-            <p className="text-gray-400 text-sm mb-6">
-              There are currently no showtimes for {dayjs(selectedDate).format('MMMM D, YYYY')}.
-              Please try selecting a different date from the calendar above.
+          <div className="text-center py-16 bg-[#121216] rounded-2xl border border-zinc-800 max-w-lg mx-auto p-8 shadow-2xl">
+            <div className="text-5xl mb-3">🎟️</div>
+            <h3 className="text-xl font-bold text-white mb-2">No Showtimes for {dayjs(selectedDate).format('MMMM D, YYYY')}</h3>
+            <p className="text-zinc-400 text-sm mb-6">
+              {datesWithShows.length > 0
+                ? 'Screenings are currently available on the dates below. Select any date to view auditoriums:'
+                : 'There are currently no active screening schedules for this title. Please check back soon or choose another movie.'}
             </p>
-            <div className="flex justify-center gap-2">
-              {next7Days.slice(0, 3).map((d) => (
-                <button
-                  key={d.dateString}
-                  onClick={() => setSelectedDate(d.dateString)}
-                  className="px-3 py-1.5 rounded-lg bg-gray-800 text-xs text-gray-300 hover:text-white hover:bg-gray-700"
-                >
-                  {d.dayName} ({d.displayDate})
-                </button>
-              ))}
-            </div>
+            {datesWithShows.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-2">
+                {datesWithShows.slice(0, 5).map((dStr) => (
+                  <button
+                    key={dStr}
+                    onClick={() => setSelectedDate(dStr)}
+                    className="px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-primary hover:bg-primary hover:text-black transition flex items-center gap-1.5"
+                  >
+                    <i className="fa-regular fa-calendar text-[11px]"></i>
+                    <span>{dayjs(dStr).format('ddd, D MMM')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
+            {/* All Slots Expired Banner */}
+            {allSlotsExpiredForDate && (
+              <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200">
+                <div className="flex items-center gap-2">
+                  <i className="fa-solid fa-clock-rotate-left text-primary text-sm"></i>
+                  <span>All showtimes scheduled for today ({dayjs(selectedDate).format('MMM D')}) have already concluded.</span>
+                </div>
+                {next7Days[1] && (
+                  <button
+                    onClick={() => setSelectedDate(next7Days[1].dateString)}
+                    className="px-3 py-1.5 bg-primary text-black font-black rounded-lg hover:bg-orange-500 transition self-start sm:self-auto flex items-center gap-1.5"
+                  >
+                    <span>View Tomorrow&apos;s Shows ({next7Days[1].displayDate})</span>
+                    <i className="fa-solid fa-arrow-right text-[10px]"></i>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Theatre & Showtime Availability Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-2">
               <div className="flex items-center gap-2">

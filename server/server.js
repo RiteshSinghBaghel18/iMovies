@@ -46,8 +46,11 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/movie', require('./routes/movieRoutes'));
+app.use('/api/movies', require('./routes/movieRoutes'));
 app.use('/api/theatre', require('./routes/theatreRoutes'));
+app.use('/api/theatres', require('./routes/theatreRoutes'));
 app.use('/api/shows', require('./routes/showRoutes'));
+app.use('/api/show', require('./routes/showRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/payment', require('./routes/paymentRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));

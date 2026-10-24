@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 const Show = require('../models/showModel');
 const Theatre = require('../models/theatreModel');
 
@@ -8,9 +9,27 @@ const Theatre = require('../models/theatreModel');
 const generateTicketsForTheatre = (theatre) => {
   const tickets = {};
   const tiers = [
-    { key: 'balcony', prefix: 'B', rows: theatre.balconySeats?.rows || 3, cols: theatre.balconySeats?.cols || 10, price: theatre.balconySeatPrice || 350 },
-    { key: 'middle', prefix: 'M', rows: theatre.middleSeats?.rows || 5, cols: theatre.middleSeats?.cols || 12, price: theatre.middleSeatPrice || 250 },
-    { key: 'lower', prefix: 'L', rows: theatre.lowerSeats?.rows || 3, cols: theatre.lowerSeats?.cols || 10, price: theatre.lowerSeatPrice || 150 }
+    {
+      key: 'balcony',
+      prefix: 'B',
+      rows: Number(theatre?.balconySeats?.rows ?? theatre?.balconyRows) || 3,
+      cols: Number(theatre?.balconySeats?.cols ?? theatre?.balconyCols) || 10,
+      price: Number(theatre?.balconySeatPrice) || 350
+    },
+    {
+      key: 'middle',
+      prefix: 'M',
+      rows: Number(theatre?.middleSeats?.rows ?? theatre?.middleRows) || 5,
+      cols: Number(theatre?.middleSeats?.cols ?? theatre?.middleCols) || 12,
+      price: Number(theatre?.middleSeatPrice) || 250
+    },
+    {
+      key: 'lower',
+      prefix: 'L',
+      rows: Number(theatre?.lowerSeats?.rows ?? theatre?.lowerRows) || 4,
+      cols: Number(theatre?.lowerSeats?.cols ?? theatre?.lowerCols) || 10,
+      price: Number(theatre?.lowerSeatPrice) || 150
+    }
   ];
 
   tiers.forEach(({ key, prefix, rows, cols, price }) => {
@@ -40,6 +59,13 @@ const generateTicketsForTheatre = (theatre) => {
 const ensureTheatresExist = async () => {
   let theatres = await Theatre.find();
   if (theatres.length >= 3) {
+    // Ensure all theatres have a valid theatreId
+    for (const t of theatres) {
+      if (!t.theatreId) {
+        t.theatreId = uuidv4();
+        await t.save();
+      }
+    }
     return theatres;
   }
 
@@ -105,26 +131,48 @@ const ensureTheatresExist = async () => {
 };
 
 /**
- * Ensure shows exist for a given movie across all available theatres
- * for the next N days.
+ * Ensure shows exist for a given movie across partner theatres for the next N days.
+ * @param {Object} movieDoc - Movie Mongoose document or object
+ * @param {number} days - Number of days to generate shows for (default 7)
+ * @param {Array<string>} specificTheatreIds - Optional list of specific theatre IDs or Mongo ObjectIds to target
+ * @param {Array<string>} customTimes - Optional array of custom show times
  */
-const ensureShowsForMovie = async (movieDoc, days = 7) => {
+const ensureShowsForMovie = async (movieDoc, days = 7, specificTheatreIds = null, customTimes = null) => {
   if (!movieDoc) return [];
 
   const movieIdStr = (movieDoc._id || movieDoc.id || movieDoc).toString();
   const movieNameStr = movieDoc.movieName || 'Featured Movie';
 
-  // Make sure we have our suite of theatres available
-  const theatres = await ensureTheatresExist();
-  const showTimes = ['10:30 AM', '01:00 PM', '04:15 PM', '07:30 PM', '10:15 PM'];
+  // Retrieve available theatres
+  let theatres = await ensureTheatresExist();
 
+  // If specific theatres were selected, filter down to those theatres
+  if (Array.isArray(specificTheatreIds) && specificTheatreIds.length > 0) {
+    theatres = theatres.filter(t => {
+      const matchId = String(t.theatreId);
+      const matchMongoId = String(t._id);
+      return specificTheatreIds.some(target => target === matchId || target === matchMongoId);
+    });
+  }
+
+  // If filtering resulted in 0 theatres (e.g. invalid target), fallback to all theatres
+  if (theatres.length === 0) {
+    theatres = await ensureTheatresExist();
+  }
+
+  const showTimes = Array.isArray(customTimes) && customTimes.length > 0
+    ? customTimes
+    : ['10:30 AM', '01:00 PM', '04:15 PM', '07:30 PM', '10:15 PM'];
+
+  // Generate date strings using local year, month, date to prevent UTC day-lag
   const today = new Date();
   const dates = [];
   for (let d = 0; d < days; d++) {
-    const showDateObj = new Date(today);
-    showDateObj.setDate(today.getDate() + d);
-    const dateStr = showDateObj.toISOString().split('T')[0];
-    dates.push(dateStr);
+    const showDateObj = new Date(today.getFullYear(), today.getMonth(), today.getDate() + d);
+    const y = showDateObj.getFullYear();
+    const m = String(showDateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(showDateObj.getDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${day}`);
   }
 
   // Check which shows currently exist for this movie for these dates
@@ -140,9 +188,10 @@ const ensureShowsForMovie = async (movieDoc, days = 7) => {
   const showsToInsert = [];
 
   for (const theatre of theatres) {
+    const tId = String(theatre.theatreId || theatre._id);
     for (const dateStr of dates) {
       for (const time of showTimes) {
-        const key = `${theatre.theatreId}_${dateStr}_${time}`;
+        const key = `${tId}_${dateStr}_${time}`;
         if (!existingSet.has(key)) {
           const tickets = generateTicketsForTheatre(theatre);
           showsToInsert.push({
@@ -150,7 +199,7 @@ const ensureShowsForMovie = async (movieDoc, days = 7) => {
             showId: uuidv4(),
             movieId: movieIdStr,
             movieName: movieNameStr,
-            theatreId: theatre.theatreId,
+            theatreId: tId,
             theatreName: theatre.theatreName,
             location: theatre.location || 'City Centre',
             showDate: dateStr,
@@ -170,8 +219,7 @@ const ensureShowsForMovie = async (movieDoc, days = 7) => {
     try {
       await Show.insertMany(showsToInsert, { ordered: false });
     } catch (insertErr) {
-      // non-fatal if duplicate keys
-      console.warn('[showGenerator] Minor duplicate notices while inserting shows:', insertErr.message);
+      console.warn('[showGenerator] Notice during batch show insert:', insertErr.message);
     }
   }
 

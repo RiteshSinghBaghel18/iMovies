@@ -17,6 +17,7 @@ function MovieDetails() {
 
   const [movie, setMovie] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [assignedTheatres, setAssignedTheatres] = useState([]);
   const [isFavorite, setIsFavorite] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -31,10 +32,11 @@ function MovieDetails() {
   const fetchMovieDetails = async () => {
     try {
       setLoading(true);
-      const [movieRes, reviewsRes, favsRes] = await Promise.allSettled([
+      const [movieRes, reviewsRes, favsRes, showsRes] = await Promise.allSettled([
         api.getMovieById(movieId),
         api.getReviewsByMovieId(movieId),
         api.getUserFavorites(),
+        api.getShowsByMovieId(movieId),
       ]);
 
       if (movieRes.status === 'fulfilled') {
@@ -52,6 +54,13 @@ function MovieDetails() {
         const rData = reviewsRes.value.data;
         const rList = Array.isArray(rData) ? rData : rData?.reviews || rData?.data || [];
         setReviews(rList);
+      }
+
+      if (showsRes.status === 'fulfilled') {
+        const sData = showsRes.value.data;
+        const sList = Array.isArray(sData) ? sData : sData?.shows || sData?.data || [];
+        const uniqueTheatres = [...new Set(sList.map((s) => s.theatreName).filter(Boolean))];
+        setAssignedTheatres(uniqueTheatres);
       }
 
       if (favsRes.status === 'fulfilled') {
@@ -260,6 +269,27 @@ function MovieDetails() {
                 {movie.description || 'No detailed synopsis available for this title.'}
               </p>
             </div>
+
+            {/* Screening Participating Theatres */}
+            {assignedTheatres.length > 0 && (
+              <div className="pt-2">
+                <span className="text-xs uppercase font-bold tracking-wider text-zinc-400 block mb-2 flex items-center gap-1.5">
+                  <i className="fa-solid fa-building text-primary"></i>
+                  Screening at {assignedTheatres.length} Partner {assignedTheatres.length === 1 ? 'Theatre' : 'Theatres'}:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {assignedTheatres.map((tName, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1 bg-zinc-900 border border-zinc-800 text-zinc-200 rounded-lg text-xs font-semibold flex items-center gap-1.5"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      {tName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-4 pt-4">
