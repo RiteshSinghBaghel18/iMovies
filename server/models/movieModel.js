@@ -21,7 +21,9 @@ const movieSchema = new mongoose.Schema({
   tmdbId: { type: Number, index: true },
   rating: { type: Number, default: 0 },
   voteCount: { type: Number, default: 0 },
-  categories: { type: [String], default: ['now_playing'], index: true }
+  categories: { type: [String], default: ['now_playing'], index: true },
+  isAdminAdded: { type: Boolean, default: false, index: true },
+  isCustom: { type: Boolean, default: false, index: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Movie', movieSchema);

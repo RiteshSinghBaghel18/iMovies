@@ -25,6 +25,8 @@ function MovieDetails() {
   const [newReviewText, setNewReviewText] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [favLoading, setFavLoading] = useState(false);
+  const [posterError, setPosterError] = useState(false);
+  const [posterFallback, setPosterFallback] = useState(false);
 
   const fetchMovieDetails = async () => {
     try {
@@ -175,15 +177,23 @@ function MovieDetails() {
           {/* Poster Column */}
           <div className="md:col-span-4 lg:col-span-3">
             <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-2xl border-2 border-gray-800 bg-gray-900 group">
-              {movie.posterUrl ? (
+              {((posterFallback && movie.backdropUrl) ? movie.backdropUrl : movie.posterUrl) && !posterError ? (
                 <img
-                  src={movie.posterUrl}
+                  src={(posterFallback && movie.backdropUrl) ? movie.backdropUrl : movie.posterUrl}
                   alt={movie.movieName}
+                  onError={() => {
+                    if (!posterFallback && movie.backdropUrl && movie.backdropUrl !== movie.posterUrl) {
+                      setPosterFallback(true);
+                    } else {
+                      setPosterError(true);
+                    }
+                  }}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-gray-500">
-                  <span className="text-6xl mb-2">🎬</span>
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center text-gray-500 bg-gradient-to-b from-zinc-900 to-black">
+                  <span className="text-6xl mb-2 opacity-50">🎬</span>
                   <p className="font-semibold text-gray-300">{movie.movieName}</p>
                 </div>
               )}

@@ -107,28 +107,20 @@ const seedData = async () => {
       );
     }
 
-    // --- Remove old legacy mock movies, Indian regional movies, and movies without posters ---
+    // --- Remove old legacy mock movies (NEVER delete admin added movies) ---
     const deletedLegacy = await Movie.deleteMany({
-      $or: [
-        { tmdbId: { $exists: false } },
-        { tmdbId: null },
-        {
-          movieName: {
-            $in: [
-              'Galactic Storm',
-              'Midnight Shadows',
-              'Laughing Paradise',
-              'Eternal Hearts',
-              'Shadow Protocol',
-              "Dragon's Peak"
-            ]
-          }
-        },
-        { trailerUrl: { $regex: /dQw4w9WgXcQ/ } },
-        { language: { $regex: /Hindi|Tamil|Telugu|Malayalam|Kannada|Punjabi|Marathi|Gujarati|Bengali|Indian|hi|ta|te/i } },
-        { posterUrl: { $in: ['', null] } },
-        { posterUrl: { $regex: /placeholder|unsplash\.com\/photo-1489599849927-2ee91cede3ba/i } }
-      ]
+      isAdminAdded: { $ne: true },
+      isCustom: { $ne: true },
+      movieName: {
+        $in: [
+          'Galactic Storm',
+          'Midnight Shadows',
+          'Laughing Paradise',
+          'Eternal Hearts',
+          'Shadow Protocol',
+          "Dragon's Peak"
+        ]
+      }
     });
     if (deletedLegacy.deletedCount > 0) {
       console.log(`  🗑️  Purged ${deletedLegacy.deletedCount} seeded/mock/Indian/no-poster movies from DB.`);

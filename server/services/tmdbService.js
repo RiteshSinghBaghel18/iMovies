@@ -225,12 +225,17 @@ const formatMovieData = (tmdbMovie, details = null, genreMap = {}, categoryTag =
   const runtimeMin = details?.runtime;
   const duration = formatRuntime(runtimeMin);
 
-  // Posters & Backdrops (Authentic TMDB only, no broken placeholders)
-  const posterUrl = `${TMDB_IMAGE_BASE}${posterPath}`;
-  const backdropPath = tmdbMovie.backdrop_path || details?.backdrop_path;
-  const backdropUrl = backdropPath
-    ? `${TMDB_BACKDROP_BASE}${backdropPath}`
-    : posterUrl;
+  // Posters & Backdrops (Authentic TMDB only, sanitized HTTPS)
+  let posterUrl = posterPath;
+  if (!posterUrl.startsWith('http://') && !posterUrl.startsWith('https://')) {
+    posterUrl = `${TMDB_IMAGE_BASE}${posterUrl.startsWith('/') ? posterUrl : `/${posterUrl}`}`;
+  }
+  let backdropUrl = tmdbMovie.backdrop_path || details?.backdrop_path;
+  if (backdropUrl && !backdropUrl.startsWith('http://') && !backdropUrl.startsWith('https://')) {
+    backdropUrl = `${TMDB_BACKDROP_BASE}${backdropUrl.startsWith('/') ? backdropUrl : `/${backdropUrl}`}`;
+  } else if (!backdropUrl) {
+    backdropUrl = posterUrl;
+  }
 
   // Real Trailer URL extraction
   let trailerUrl = '';

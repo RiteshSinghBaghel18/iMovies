@@ -105,14 +105,9 @@ function AddMovie() {
     e.preventDefault();
 
     if (!formData.movieName.trim()) { toast.error('Movie title is required'); return; }
-    if (!formData.description.trim() || formData.description.trim().length < 10) {
-      toast.error('Description must be at least 10 characters'); return;
+    if (!formData.description.trim()) {
+      toast.error('Description is required'); return;
     }
-    if (!formData.posterUrl.trim()) {
-      toast.error('Poster image URL is required. Movies without posters cannot be published.'); return;
-    }
-    if (selectedGenres.length === 0) { toast.error('Please select at least one genre'); return; }
-    if (!formData.duration.trim()) { toast.error('Duration is required'); return; }
 
     try {
       setLoading(true);
@@ -125,15 +120,18 @@ function AddMovie() {
           profileUrl: c.profileUrl ? c.profileUrl.trim() : ''
         }));
 
+      const defaultPoster = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
+
       const payload = {
         ...formData,
-        genres: selectedGenres,
+        posterUrl: formData.posterUrl.trim() || defaultPoster,
+        genres: selectedGenres.length > 0 ? selectedGenres : ['Action', 'Drama'],
         cast: validCast,
       };
 
       const res = await api.addMovie(payload);
       if (res.data?.success || res.status === 200 || res.status === 201) {
-        toast.success(`🎬 Movie "${formData.movieName}" added successfully and published at top of user page!`);
+        toast.success(`🎬 Movie "${formData.movieName}" saved & published at top of user page!`);
         setFormData({
           movieName: '', description: '', releaseDate: '',
           language: 'English', duration: '', certification: 'U/A',

@@ -9,6 +9,7 @@ function MovieCard({ movie, isFavorited: initialFavorited = false, onFavoriteCha
   const [isFav, setIsFav] = useState(initialFavorited);
   const [favLoading, setFavLoading] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [imgFallback, setImgFallback] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { theme } = useTheme();
 
@@ -17,6 +18,8 @@ function MovieCard({ movie, isFavorited: initialFavorited = false, onFavoriteCha
   }, [initialFavorited]);
 
   const movieId = movie?._id || movie?.id;
+
+  const currentPoster = imgFallback && movie?.backdropUrl ? movie.backdropUrl : movie?.posterUrl;
 
   const handleFavoriteClick = async (e) => {
     e.preventDefault();
@@ -70,27 +73,41 @@ function MovieCard({ movie, isFavorited: initialFavorited = false, onFavoriteCha
     >
       {/* Poster Image Container */}
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-black flex-shrink-0">
-        {movie?.posterUrl && !imgError ? (
+        {currentPoster && !imgError ? (
           <img
-            src={movie.posterUrl}
+            src={currentPoster}
             alt={movie.movieName}
-            onError={() => setImgError(true)}
+            onError={() => {
+              if (!imgFallback && movie?.backdropUrl && movie.backdropUrl !== movie.posterUrl) {
+                setImgFallback(true);
+              } else {
+                setImgError(true);
+              }
+            }}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
             loading="lazy"
             referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-zinc-950">
-            <span className="text-5xl mb-3 opacity-40">🎬</span>
-            <span className="text-sm font-bold text-zinc-300 line-clamp-2">{movie?.movieName || 'Movie Poster'}</span>
-            <span className="text-xs text-primary mt-1">{movie?.language || 'Cinema'}</span>
+          <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-zinc-900 to-black border border-zinc-800">
+            <span className="text-4xl mb-2 opacity-50">🎬</span>
+            <span className="text-xs font-black text-white uppercase tracking-tight line-clamp-2 px-2">
+              {movie?.movieName || 'Movie Poster'}
+            </span>
+            <span className="text-[10px] text-primary font-bold mt-1.5 uppercase tracking-wider px-2 py-0.5 bg-black border border-primary/40">
+              {movie?.language || 'Cinema'}
+            </span>
           </div>
         )}
 
-        {/* Badges on Top Left (Certification & TMDB Rating) */}
+        {/* Badges on Top Left (Certification & TMDB Rating & Admin Premiere) */}
         <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
           <div className="flex items-center gap-1.5 flex-wrap">
+            {movie?.isAdminAdded && (
+              <span className="px-2 py-0.5 text-[9px] font-black uppercase bg-primary text-black tracking-wider shadow-md">
+                ⭐ NEW
+              </span>
+            )}
             {movie?.certification && (
               <span className="px-2 py-0.5 text-[10px] font-bold bg-black text-primary border border-primary/40">
                 {movie.certification}

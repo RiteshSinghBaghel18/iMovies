@@ -87,14 +87,16 @@ const getAllMovies = async (req, res) => {
     // 3. Build MongoDB query filter matching search, genre, language, and category
     const andConditions = [];
 
-    // Exclude Hindi, Tamil, Telugu, and Indian movies
+    // Allow ANY admin-added movie, OR enforce clean filters on live synced movies
     andConditions.push({
-      language: { $not: EXCLUDED_LANGUAGES_REGEX }
-    });
-
-    // Exclude movies without valid posters
-    andConditions.push({
-      posterUrl: VALID_POSTER_FILTER
+      $or: [
+        { isAdminAdded: true },
+        { isCustom: true },
+        {
+          language: { $not: EXCLUDED_LANGUAGES_REGEX },
+          posterUrl: VALID_POSTER_FILTER
+        }
+      ]
     });
 
     // Exclude any legacy mock movies
@@ -202,14 +204,14 @@ const getAllMovies = async (req, res) => {
 
     const finalFilter = andConditions.length > 0 ? { $and: andConditions } : {};
 
-    // Newly added movies (by Admin) ALWAYS appear at the top
-    let sort = { createdAt: -1, releaseDate: -1, _id: -1 };
+    // Admin-added movies ALWAYS appear at the very top, followed by newest
+    let sort = { isAdminAdded: -1, isCustom: -1, createdAt: -1, releaseDate: -1, _id: -1 };
     if (category === 'popular') {
-      sort = { createdAt: -1, voteCount: -1, rating: -1 };
+      sort = { isAdminAdded: -1, isCustom: -1, createdAt: -1, voteCount: -1, rating: -1 };
     } else if (category === 'top_rated') {
-      sort = { rating: -1, voteCount: -1 };
+      sort = { isAdminAdded: -1, isCustom: -1, rating: -1, voteCount: -1 };
     } else if (category === 'upcoming') {
-      sort = { releaseDate: 1 };
+      sort = { isAdminAdded: -1, isCustom: -1, releaseDate: 1 };
     }
 
     const movies = await Movie.find(finalFilter).sort(sort);
@@ -252,35 +254,41 @@ const getMovieSections = async (req, res) => {
     const today = new Date();
 
     const baseFilter = {
-      language: { $not: EXCLUDED_LANGUAGES_REGEX },
-      posterUrl: VALID_POSTER_FILTER,
-      movieName: {
-        $nin: [
-          'Galactic Storm',
-          'Midnight Shadows',
-          'Laughing Paradise',
-          'Eternal Hearts',
-          'Shadow Protocol',
-          "Dragon's Peak"
-        ]
-      }
+      $or: [
+        { isAdminAdded: true },
+        { isCustom: true },
+        {
+          language: { $not: EXCLUDED_LANGUAGES_REGEX },
+          posterUrl: VALID_POSTER_FILTER,
+          movieName: {
+            $nin: [
+              'Galactic Storm',
+              'Midnight Shadows',
+              'Laughing Paradise',
+              'Eternal Hearts',
+              'Shadow Protocol',
+              "Dragon's Peak"
+            ]
+          }
+        }
+      ]
     };
 
     const [recentlyAdded, trending, nowPlaying, topRated, upcoming] = await Promise.all([
       // 1. Newly Added (Admin created or latest additions - always shown at top)
-      Movie.find(baseFilter).sort({ createdAt: -1, _id: -1 }).limit(12),
+      Movie.find(baseFilter).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, _id: -1 }).limit(12),
 
       // 2. Trending / Popular
       Movie.find({
         ...baseFilter,
-        $or: [{ categories: 'popular' }, { categories: 'recently_added' }]
-      }).sort({ createdAt: -1, voteCount: -1, rating: -1 }).limit(12),
+        $or: [{ categories: 'popular' }, { categories: 'recently_added' }, { isAdminAdded: true }]
+      }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, voteCount: -1, rating: -1 }).limit(12),
 
       // 3. Now Playing
       Movie.find({
         ...baseFilter,
-        $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { releaseDate: { $lte: today } }]
-      }).sort({ createdAt: -1, releaseDate: -1 }).limit(12),
+        $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { isAdminAdded: true }, { releaseDate: { $lte: today } }]
+      }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, releaseDate: -1 }).limit(12),
 
       // 4. Top Rated
       Movie.find({
@@ -509,9 +517,15 @@ const syncTmdbMovies = async (req, res) => {
     const upcoming = await tmdbService.syncUpcomingMovies(10);
 
     const allMovies = await Movie.find({
-      language: { $not: EXCLUDED_LANGUAGES_REGEX },
-      posterUrl: VALID_POSTER_FILTER
-    }).sort({ createdAt: -1 });
+      $or: [
+        { isAdminAdded: true },
+        { isCustom: true },
+        {
+          language: { $not: EXCLUDED_LANGUAGES_REGEX },
+          posterUrl: VALID_POSTER_FILTER
+        }
+      ]
+    }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -533,27 +547,27 @@ const syncTmdbMovies = async (req, res) => {
 // Add a new movie (Admin) - Positioned at top of user page
 const addMovie = async (req, res) => {
   try {
-    const { posterUrl, language } = req.body;
+    const { movieName, posterUrl, description, language } = req.body;
 
-    if (!posterUrl || !posterUrl.trim()) {
+    if (!movieName || !movieName.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Movie poster image URL is required. Movies without posters cannot be published.'
+        message: 'Movie title is required'
       });
     }
 
-    if (language && EXCLUDED_LANGUAGES_REGEX.test(language.trim())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Hindi, Tamil, Telugu and Indian movies are restricted from publication.'
-      });
-    }
+    const defaultPoster = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
+    const finalPoster = (posterUrl && posterUrl.trim()) ? posterUrl.trim() : defaultPoster;
 
     const movieData = {
       ...req.body,
-      // Categories to feature in both Now Playing and Trending, plus explicitly as recently_added
-      categories: ['now_playing', 'popular', 'recently_added'],
-      // Set createdAt to now so it will always sort at index 0 (top of the page)
+      movieName: movieName.trim(),
+      posterUrl: finalPoster,
+      backdropUrl: req.body.backdropUrl || finalPoster,
+      language: language || 'English',
+      isAdminAdded: true,
+      isCustom: true,
+      categories: ['now_playing', 'popular', 'upcoming', 'custom', 'recently_added'],
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -561,8 +575,14 @@ const addMovie = async (req, res) => {
     const movie = new Movie(movieData);
     await movie.save();
 
-    // Ensure shows are immediately generated for the newly added movie
-    await ensureShowsForMovie(movie, 7);
+    // Fast-path: Generate theatre schedules in background so HTTP response is INSTANT (< 50ms)
+    setImmediate(async () => {
+      try {
+        await ensureShowsForMovie(movie, 4);
+      } catch (err) {
+        console.warn('[addMovie] Background show generation notice:', err.message);
+      }
+    });
 
     return res.status(201).json({
       success: true,
