@@ -80,7 +80,7 @@ Create or verify `client/.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000
-VITE_RAZORPAY_KEY_ID=rzp_test_TqZus4
+VITE_RAZORPAY_KEY_ID=rzp_test_
 ```
 
 ### 2. Install Dependencies
@@ -179,7 +179,4 @@ console.log('Past slot expired:', isShowExpired(today, '10:30 AM'));
 ```
 
 ---
-
-## License
-
-MIT License. Crafted with care for movie lovers and cinema operators.
+. Crafted with care for movie lovers and cinema operators.
