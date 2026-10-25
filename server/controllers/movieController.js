@@ -1,662 +1,168 @@
-const Movie = require('../models/movieModel');
-const Theatre = require('../models/theatreModel');
-const Show = require('../models/showModel');
-const tmdbService = require('../services/tmdbService');
-const { ensureShowsForMovie } = require('../utils/showGenerator');
+const Movie = require("../models/movieModel");
+const { searchAndSyncTMDB } = require("../services/tmdbService");
 
-// Excluded languages: Hindi, Tamil, Telugu, and Indian regional languages
-const EXCLUDED_LANGUAGES_REGEX = /^(Hindi|Tamil|Telugu|Malayalam|Kannada|Punjabi|Marathi|Gujarati|Bengali|Indian|hi|ta|te|ml|kn|pa|mr|gu|bn)$/i;
-
-// Filter for valid poster (no empty string, no null, no placeholders)
-const VALID_POSTER_FILTER = {
-  $exists: true,
-  $ne: '',
-  $nin: [null, ''],
-  $not: /placeholder|unsplash\.com\/photo-1489599849927-2ee91cede3ba/i
-};
-
-// Get all movies with dynamic live TMDB market integration and optional filters (?genre=&language=&search=)
-const getAllMovies = async (req, res) => {
+// GET ALL MOVIES (with filters and search)
+exports.getAllMovies = async (req, res) => {
   try {
-    const { genre, language, search, category, refresh, location } = req.query;
+    const { search, q, genre, language, sort } = req.query;
+    const query = {};
 
-    // 1. If searching, attempt TMDB live sync if local DB might need fresh records
-    if (search && search.trim()) {
-      try {
-        const localMatches = await Movie.countDocuments({
-          $or: [
-            { movieName: { $regex: search.trim(), $options: 'i' } },
-            { description: { $regex: search.trim(), $options: 'i' } }
-          ],
-          language: { $not: EXCLUDED_LANGUAGES_REGEX },
-          posterUrl: VALID_POSTER_FILTER
-        });
+    const searchQuery = search || q;
 
-        if (localMatches === 0) {
-          const tmdbSearchResults = await tmdbService.searchMovies(search.trim());
-          const results = (tmdbSearchResults.results || []).slice(0, 10);
-          const genreMap = await tmdbService.fetchGenreMap();
+    // If a search query is provided, trigger a live TMDB search-and-sync
+    // in the background before querying MongoDB, so results stay fresh.
+    if (searchQuery) {
+      searchAndSyncTMDB(searchQuery).catch((e) =>
+        console.error("[MovieController] Background TMDB search failed:", e.message)
+      );
 
-          for (const item of results) {
-            let details = null;
-            try {
-              details = await tmdbService.getMovieDetails(item.id);
-            } catch (e) {
-              // non-fatal
-            }
-            const formatted = tmdbService.formatMovieData(item, details, genreMap);
-            if (!formatted) continue;
-
-            const doc = await Movie.findOneAndUpdate(
-              { tmdbId: formatted.tmdbId },
-              { $set: formatted },
-              { new: true, upsert: true }
-            );
-            if (doc) {
-              await ensureShowsForMovie(doc, 7);
-            }
-          }
-        }
-      } catch (tmdbErr) {
-        console.warn('[movieController] TMDB search fallback to local DB:', tmdbErr.message);
-      }
+      query.$or = [
+        { movieName: { $regex: searchQuery, $options: "i" } },
+        { description: { $regex: searchQuery, $options: "i" } },
+        { genres: { $in: [new RegExp(searchQuery, "i")] } },
+        { director: { $regex: searchQuery, $options: "i" } },
+        { cast: { $in: [new RegExp(searchQuery, "i")] } },
+      ];
     }
 
-    // 2. Check if DB has enough TMDB live movies; if not, sync from TMDB
-    const count = await Movie.countDocuments({
-      tmdbId: { $exists: true, $ne: null },
-      language: { $not: EXCLUDED_LANGUAGES_REGEX },
-      posterUrl: VALID_POSTER_FILTER
-    });
-    if (count < 10 || refresh === 'true') {
-      try {
-        console.log('[movieController] Seeding/Syncing live market movies with real trailers from TMDB...');
-        const nowPlaying = await tmdbService.syncNowPlayingMovies(12);
-        const popular = await tmdbService.syncPopularMovies(12);
-        const topRated = await tmdbService.syncTopRatedMovies(10);
-        const upcoming = await tmdbService.syncUpcomingMovies(10);
-        const allNew = [...nowPlaying, ...popular, ...topRated, ...upcoming];
-        for (const m of allNew.slice(0, 8)) {
-          await ensureShowsForMovie(m, 7);
-        }
-      } catch (syncErr) {
-        console.warn('[movieController] Live TMDB auto-sync non-fatal warning:', syncErr.message);
-      }
+    if (genre && genre !== "All") {
+      query.genres = { $in: [genre] };
     }
 
-    // 3. Build MongoDB query filter matching search, genre, language, and category
-    const andConditions = [];
-
-    // Allow ANY admin-added movie, OR enforce clean filters on live synced movies
-    andConditions.push({
-      $or: [
-        { isAdminAdded: true },
-        { isCustom: true },
-        {
-          language: { $not: EXCLUDED_LANGUAGES_REGEX },
-          posterUrl: VALID_POSTER_FILTER
-        }
-      ]
-    });
-
-    // Exclude any legacy mock movies
-    andConditions.push({
-      movieName: {
-        $nin: [
-          'Galactic Storm',
-          'Midnight Shadows',
-          'Laughing Paradise',
-          'Eternal Hearts',
-          'Shadow Protocol',
-          "Dragon's Peak"
-        ]
-      }
-    });
-
-    // Search filter (?search=)
-    if (search && search.trim()) {
-      const sTerm = search.trim();
-      andConditions.push({
-        $or: [
-          { movieName: { $regex: sTerm, $options: 'i' } },
-          { description: { $regex: sTerm, $options: 'i' } }
-        ]
-      });
+    if (language && language !== "All") {
+      query.language = { $regex: new RegExp(`^${language}$`, "i") };
     }
 
-    // Genre filter (?genre=)
-    if (genre && genre.trim() && genre !== 'All' && genre !== 'All Genres') {
-      const gTerm = genre.trim();
-      andConditions.push({
-        $or: [
-          { genres: { $regex: new RegExp(gTerm, 'i') } },
-          { genre: { $regex: new RegExp(gTerm, 'i') } }
-        ]
-      });
-    }
+    // Sort options — default: newly added movies at top (createdAt / _id desc)
+    let sortOption = { createdAt: -1, _id: -1 };
+    if (sort === "popularity") sortOption = { tmdbPopularity: -1, releaseDate: -1 };
+    else if (sort === "rating") sortOption = { rating: -1 };
+    else if (sort === "name") sortOption = { movieName: 1 };
+    else if (sort === "date") sortOption = { releaseDate: -1, createdAt: -1 };
 
-    // Language filter (?language=)
-    if (language && language.trim() && language !== 'All' && language !== 'All Languages') {
-      const lTerm = language.trim();
-      const langMap = {
-        english: 'en',
-        korean: 'ko',
-        japanese: 'ja',
-        spanish: 'es',
-        french: 'fr',
-        german: 'de',
-        chinese: 'zh'
-      };
-      const code = langMap[lTerm.toLowerCase()];
-      if (code) {
-        andConditions.push({
-          $or: [
-            { language: { $regex: new RegExp(`^${lTerm}$`, 'i') } },
-            { language: { $regex: new RegExp(`^${code}$`, 'i') } },
-            { language: { $regex: new RegExp(lTerm, 'i') } }
-          ]
-        });
-      } else {
-        andConditions.push({
-          language: { $regex: new RegExp(lTerm, 'i') }
-        });
-      }
-    }
+    const movies = await Movie.find(query).sort(sortOption);
 
-    // Location filter
-    if (location && location !== 'All' && location !== 'All Countries') {
-      const matchingTheatres = await Theatre.find({ location: new RegExp(location.trim(), 'i') });
-      if (matchingTheatres.length > 0) {
-        const theatreIds = matchingTheatres.map(t => t.theatreId);
-        const shows = await Show.find({ theatreId: { $in: theatreIds } });
-        const movieIds = [...new Set(shows.map(s => s.movieId))];
-        if (movieIds.length > 0) {
-          const mongoose = require('mongoose');
-          const validObjectIds = movieIds.filter(id => mongoose.isValidObjectId(id));
-          const validNumericIds = movieIds.map(Number).filter(id => !isNaN(id) && id > 0);
-          const idOr = [];
-          if (validObjectIds.length > 0) idOr.push({ _id: { $in: validObjectIds } });
-          if (validNumericIds.length > 0) idOr.push({ tmdbId: { $in: validNumericIds } });
-          if (idOr.length > 0) {
-            andConditions.push({ $or: idOr });
-          }
-        }
-      }
-    }
+    // Distinct genres and languages for UI filter dropdowns
+    const allGenres    = await Movie.distinct("genres");
+    const allLanguages = await Movie.distinct("language");
 
-    // Category tabs filter
-    if (category) {
-      if (category === 'nowPlaying' || category === 'now_playing') {
-        andConditions.push({
-          $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { releaseDate: { $lte: new Date() } }]
-        });
-      } else if (category === 'popular') {
-        andConditions.push({
-          $or: [{ categories: 'popular' }, { categories: 'recently_added' }]
-        });
-      } else if (category === 'top_rated') {
-        andConditions.push({
-          $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.0 } }]
-        });
-      } else if (category === 'upcoming') {
-        andConditions.push({
-          $or: [{ categories: 'upcoming' }, { releaseDate: { $gt: new Date() } }]
-        });
-      }
-    }
-
-    const finalFilter = andConditions.length > 0 ? { $and: andConditions } : {};
-
-    // Admin-added movies ALWAYS appear at the very top, followed by newest
-    let sort = { isAdminAdded: -1, isCustom: -1, createdAt: -1, releaseDate: -1, _id: -1 };
-    if (category === 'popular') {
-      sort = { isAdminAdded: -1, isCustom: -1, createdAt: -1, voteCount: -1, rating: -1 };
-    } else if (category === 'top_rated') {
-      sort = { isAdminAdded: -1, isCustom: -1, rating: -1, voteCount: -1 };
-    } else if (category === 'upcoming') {
-      sort = { isAdminAdded: -1, isCustom: -1, releaseDate: 1 };
-    }
-
-    const movies = await Movie.find(finalFilter).sort(sort);
-
-    return res.status(200).json({
+    res.json({
       success: true,
-      source: 'live-market-synced',
       count: movies.length,
-      data: movies,
-      movies
+      genres: allGenres.sort(),
+      languages: allLanguages.sort(),
+      movies,
     });
   } catch (error) {
-    console.error('[movieController] Error in getAllMovies:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching movies'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Curated movie sections endpoint for Home page
-const getMovieSections = async (req, res) => {
+// GET SINGLE MOVIE
+exports.getMovieById = async (req, res) => {
   try {
-    const count = await Movie.countDocuments({
-      tmdbId: { $exists: true, $ne: null },
-      language: { $not: EXCLUDED_LANGUAGES_REGEX },
-      posterUrl: VALID_POSTER_FILTER
-    });
-    if (count < 15) {
-      try {
-        await tmdbService.syncNowPlayingMovies(12);
-        await tmdbService.syncPopularMovies(12);
-        await tmdbService.syncTopRatedMovies(10);
-        await tmdbService.syncUpcomingMovies(10);
-      } catch (e) {
-        console.warn('[movieController] Error auto-syncing sections:', e.message);
-      }
-    }
-
-    const today = new Date();
-
-    const baseFilter = {
-      $or: [
-        { isAdminAdded: true },
-        { isCustom: true },
-        {
-          language: { $not: EXCLUDED_LANGUAGES_REGEX },
-          posterUrl: VALID_POSTER_FILTER,
-          movieName: {
-            $nin: [
-              'Galactic Storm',
-              'Midnight Shadows',
-              'Laughing Paradise',
-              'Eternal Hearts',
-              'Shadow Protocol',
-              "Dragon's Peak"
-            ]
-          }
-        }
-      ]
-    };
-
-    const [recentlyAdded, trending, nowPlaying, topRated, upcoming] = await Promise.all([
-      // 1. Newly Added (Admin created or latest additions - always shown at top)
-      Movie.find(baseFilter).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, _id: -1 }).limit(12),
-
-      // 2. Trending / Popular
-      Movie.find({
-        ...baseFilter,
-        $or: [{ categories: 'popular' }, { categories: 'recently_added' }, { isAdminAdded: true }]
-      }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, voteCount: -1, rating: -1 }).limit(12),
-
-      // 3. Now Playing
-      Movie.find({
-        ...baseFilter,
-        $or: [{ categories: 'now_playing' }, { categories: 'recently_added' }, { isAdminAdded: true }, { releaseDate: { $lte: today } }]
-      }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1, releaseDate: -1 }).limit(12),
-
-      // 4. Top Rated
-      Movie.find({
-        ...baseFilter,
-        $or: [{ categories: 'top_rated' }, { rating: { $gte: 7.5 } }]
-      }).sort({ rating: -1, voteCount: -1 }).limit(12),
-
-      // 5. Upcoming
-      Movie.find({
-        ...baseFilter,
-        $or: [{ categories: 'upcoming' }, { releaseDate: { $gt: today } }]
-      }).sort({ releaseDate: 1 }).limit(12)
-    ]);
-
-    const allMovies = recentlyAdded.length > 0 ? recentlyAdded : await Movie.find(baseFilter).sort({ createdAt: -1 }).limit(20);
-
-    return res.status(200).json({
-      success: true,
-      sections: {
-        recentlyAdded,
-        trending: trending.length > 0 ? trending : allMovies.slice(0, 10),
-        nowPlaying: nowPlaying.length > 0 ? nowPlaying : allMovies.slice(0, 12),
-        topRated: topRated.length > 0 ? topRated : allMovies.filter(m => m.rating >= 7),
-        upcoming: upcoming.length > 0 ? upcoming : allMovies.slice(-6)
-      }
-    });
-  } catch (error) {
-    console.error('[movieController] Error in getMovieSections:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching movie sections'
-    });
-  }
-};
-
-// Get single movie by ID (supports MongoDB _id or TMDB ID)
-const getMovieById = async (req, res) => {
-  try {
-    const idParam = req.params.id;
-    let movie = null;
-
-    // Check if it's a valid 24-char hex Mongo ObjectId
-    if (idParam.match(/^[0-9a-fA-F]{24}$/)) {
-      movie = await Movie.findById(idParam);
-    }
-
-    // If not found and it's a number, check by tmdbId
-    if (!movie && !isNaN(Number(idParam))) {
-      movie = await Movie.findOne({ tmdbId: Number(idParam) });
-    }
-
-    // If still not found and numeric, attempt live fetch from TMDB
-    if (!movie && !isNaN(Number(idParam))) {
-      try {
-        const tmdbDetails = await tmdbService.getMovieDetails(Number(idParam));
-        if (tmdbDetails) {
-          movie = await tmdbService.syncMovieToDb(tmdbDetails, true);
-        }
-      } catch (tmdbErr) {
-        console.warn('[movieController] Could not fetch TMDB details live:', tmdbErr.message);
-      }
-    }
-
+    const movie = await Movie.findById(req.params.movieId);
     if (!movie) {
-      return res.status(404).json({
-        success: false,
-        message: 'Movie not found'
-      });
+      return res.status(404).json({ success: false, message: "Movie not found." });
+    }
+    res.json({ success: true, movie });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// CREATE MOVIE (Admin)
+exports.createMovie = async (req, res) => {
+  try {
+    const {
+      movieName,
+      description,
+      genres,
+      releaseDate,
+      language,
+      duration,
+      certification,
+      posterUrl,
+      bannerUrl,
+      trailerUrl,
+      cast,
+      director,
+      rating,
+    } = req.body;
+
+    const parsedGenres = Array.isArray(genres)
+      ? genres
+      : typeof genres === "string"
+      ? genres.split(",").map((g) => g.trim())
+      : [];
+
+    const parsedCast = Array.isArray(cast)
+      ? cast
+      : typeof cast === "string"
+      ? cast.split(",").map((c) => c.trim())
+      : [];
+
+    const movie = await Movie.create({
+      movieName,
+      description,
+      genres: parsedGenres,
+      releaseDate: releaseDate ? new Date(releaseDate) : new Date(),
+      language,
+      duration,
+      certification: certification || "U/A",
+      posterUrl: posterUrl || undefined,
+      bannerUrl: bannerUrl || undefined,
+      trailerUrl: trailerUrl || undefined,
+      cast: parsedCast,
+      director: director || "Unknown",
+      rating: rating ? Number(rating) : 8.0,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Movie added successfully!",
+      movie,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// UPDATE MOVIE (Admin)
+exports.updateMovie = async (req, res) => {
+  try {
+    const updates = { ...req.body };
+    if (typeof updates.genres === "string") {
+      updates.genres = updates.genres.split(",").map((g) => g.trim());
+    }
+    if (typeof updates.cast === "string") {
+      updates.cast = updates.cast.split(",").map((c) => c.trim());
     }
 
-    // Self-healing: if movie has fake rickroll trailer or missing trailer, fix it with real TMDB trailer
-    if (movie.tmdbId && (!movie.trailerUrl || movie.trailerUrl.includes('dQw4w9WgXcQ'))) {
-      try {
-        const realTrailerUrl = await tmdbService.fetchMovieTrailerUrl(movie.tmdbId, movie.movieName);
-        if (realTrailerUrl) {
-          movie = await Movie.findByIdAndUpdate(
-            movie._id,
-            { $set: { trailerUrl: realTrailerUrl } },
-            { new: true }
-          );
-        }
-      } catch (err) {
-        // non-fatal
-      }
-    }
-
-    // Ensure shows exist for this movie so user can book it
-    await ensureShowsForMovie(movie, 4);
-
-    return res.status(200).json({
-      success: true,
-      data: movie,
-      movie
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching movie'
-    });
-  }
-};
-
-// Live TMDB Market endpoint: Now Playing
-const getMarketNowPlaying = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const data = await tmdbService.getNowPlaying(page);
-    const genreMap = await tmdbService.fetchGenreMap();
-
-    const formattedMovies = (data.results || [])
-      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'now_playing'))
-      .filter(Boolean);
-
-    return res.status(200).json({
-      success: true,
-      page: data.page,
-      totalPages: data.total_pages,
-      totalResults: data.total_results,
-      data: formattedMovies,
-      movies: formattedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching TMDB now playing'
-    });
-  }
-};
-
-// Live TMDB Market endpoint: Popular
-const getMarketPopular = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const data = await tmdbService.getPopular(page);
-    const genreMap = await tmdbService.fetchGenreMap();
-
-    const formattedMovies = (data.results || [])
-      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'popular'))
-      .filter(Boolean);
-
-    return res.status(200).json({
-      success: true,
-      page: data.page,
-      totalPages: data.total_pages,
-      totalResults: data.total_results,
-      data: formattedMovies,
-      movies: formattedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching TMDB popular'
-    });
-  }
-};
-
-// Live TMDB Market endpoint: Upcoming
-const getMarketUpcoming = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const data = await tmdbService.getUpcoming(page);
-    const genreMap = await tmdbService.fetchGenreMap();
-
-    const formattedMovies = (data.results || [])
-      .map(m => tmdbService.formatMovieData(m, null, genreMap, 'upcoming'))
-      .filter(Boolean);
-
-    return res.status(200).json({
-      success: true,
-      page: data.page,
-      totalPages: data.total_pages,
-      totalResults: data.total_results,
-      data: formattedMovies,
-      movies: formattedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching TMDB upcoming'
-    });
-  }
-};
-
-// Live TMDB Market endpoint: Search
-const searchMarketMovies = async (req, res) => {
-  try {
-    const query = req.query.query || req.query.q || '';
-    if (!query.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Search query is required'
-      });
-    }
-    const page = parseInt(req.query.page) || 1;
-    const data = await tmdbService.searchMovies(query.trim(), page);
-    const genreMap = await tmdbService.fetchGenreMap();
-
-    const formattedMovies = (data.results || [])
-      .map(m => tmdbService.formatMovieData(m, null, genreMap))
-      .filter(Boolean);
-
-    return res.status(200).json({
-      success: true,
-      query,
-      page: data.page,
-      totalPages: data.total_pages,
-      totalResults: data.total_results,
-      data: formattedMovies,
-      movies: formattedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error searching TMDB movies'
-    });
-  }
-};
-
-// Admin/Manual trigger to sync latest movies from TMDB
-const syncTmdbMovies = async (req, res) => {
-  try {
-    const limit = parseInt(req.body.limit) || 15;
-    const nowPlaying = await tmdbService.syncNowPlayingMovies(limit);
-    const popular = await tmdbService.syncPopularMovies(limit);
-    const topRated = await tmdbService.syncTopRatedMovies(10);
-    const upcoming = await tmdbService.syncUpcomingMovies(10);
-
-    const allMovies = await Movie.find({
-      $or: [
-        { isAdminAdded: true },
-        { isCustom: true },
-        {
-          language: { $not: EXCLUDED_LANGUAGES_REGEX },
-          posterUrl: VALID_POSTER_FILTER
-        }
-      ]
-    }).sort({ isAdminAdded: -1, isCustom: -1, createdAt: -1 });
-
-    return res.status(200).json({
-      success: true,
-      message: `Synced ${nowPlaying.length} now playing, ${popular.length} popular, ${topRated.length} top rated, ${upcoming.length} upcoming movies with original trailers from TMDB.`,
-      nowPlayingCount: nowPlaying.length,
-      popularCount: popular.length,
-      topRatedCount: topRated.length,
-      upcomingCount: upcoming.length,
-      totalMovies: allMovies.length
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error syncing TMDB movies'
-    });
-  }
-};
-
-// Add a new movie (Admin) - Positioned at top of user page with theatre assignment
-const addMovie = async (req, res) => {
-  try {
-    const { movieName, posterUrl, description, language, assignedTheatres, showTimes } = req.body;
-
-    if (!movieName || !movieName.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Movie title is required'
-      });
-    }
-
-    const defaultPoster = 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=500&auto=format&fit=crop&q=80';
-    const finalPoster = (posterUrl && posterUrl.trim()) ? posterUrl.trim() : defaultPoster;
-
-    const movieData = {
-      ...req.body,
-      movieName: movieName.trim(),
-      posterUrl: finalPoster,
-      backdropUrl: req.body.backdropUrl || finalPoster,
-      language: language || 'English',
-      isAdminAdded: true,
-      isCustom: true,
-      categories: ['now_playing', 'popular', 'upcoming', 'custom', 'recently_added'],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    const movie = new Movie(movieData);
-    await movie.save();
-
-    // Assign theatres and generate showtimes ONLY IF admin explicitly selected theatres
-    if (Array.isArray(assignedTheatres) && assignedTheatres.length > 0) {
-      const targetTimes = Array.isArray(showTimes) && showTimes.length > 0 ? showTimes : null;
-      await ensureShowsForMovie(movie, 7, assignedTheatres, targetTimes);
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: 'Movie added successfully and published at top of user page',
-      data: movie,
-      movie
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error adding movie'
-    });
-  }
-};
-
-// Update an existing movie (Admin)
-const updateMovie = async (req, res) => {
-  try {
-    const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, {
+    const movie = await Movie.findByIdAndUpdate(req.params.movieId, updates, {
       new: true,
-      runValidators: true
+      runValidators: true,
     });
+
     if (!movie) {
-      return res.status(404).json({
-        success: false,
-        message: 'Movie not found'
-      });
+      return res.status(404).json({ success: false, message: "Movie not found." });
     }
-    return res.status(200).json({
-      success: true,
-      message: 'Movie updated successfully',
-      data: movie,
-      movie
-    });
+
+    res.json({ success: true, message: "Movie updated successfully!", movie });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error updating movie'
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Delete a movie (Admin)
-const deleteMovie = async (req, res) => {
+// DELETE MOVIE (Admin)
+exports.deleteMovie = async (req, res) => {
   try {
-    const movie = await Movie.findByIdAndDelete(req.params.id);
+    const movie = await Movie.findByIdAndDelete(req.params.movieId);
     if (!movie) {
-      return res.status(404).json({
-        success: false,
-        message: 'Movie not found'
-      });
+      return res.status(404).json({ success: false, message: "Movie not found." });
     }
-    return res.status(200).json({
-      success: true,
-      message: 'Movie deleted successfully'
-    });
+    res.json({ success: true, message: "Movie deleted successfully!" });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error deleting movie'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
-};
-
-module.exports = {
-  getAllMovies,
-  getMovieSections,
-  getMovieById,
-  getMarketNowPlaying,
-  getMarketPopular,
-  getMarketUpcoming,
-  searchMarketMovies,
-  syncTmdbMovies,
-  addMovie,
-  updateMovie,
-  deleteMovie
 };

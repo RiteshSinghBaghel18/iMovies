@@ -1,39 +1,47 @@
-const cron = require('node-cron');
-const Booking = require('../models/bookingModel');
-const Movie = require('../models/movieModel');
-const { sendReminder } = require('./mailer');
+const cron = require("node-cron");
+const Booking = require("../models/bookingModel");
+const { sendShowReminder } = require("./mailer");
 
-// Run every hour
-cron.schedule('0 * * * *', async () => {
+/**
+ * Check for upcoming shows and send reminder emails
+ */
+const checkAndSendReminders = async () => {
   try {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
-    const bookings = await Booking.find({ showDate: tomorrowStr, paymentStatus: 'Completed' });
-    console.log(`[ReminderService] Sending reminders for ${bookings.length} bookings`);
-    for (const booking of bookings) {
-      let movieName = 'Your Movie';
-      try {
-        if (booking.movieId) {
-          const movie = await Movie.findById(booking.movieId);
-          if (movie && movie.movieName) {
-            movieName = movie.movieName;
-          }
-        }
-      } catch (movieErr) {
-        // Fallback to default movie name if lookup fails
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    
+    // Find active completed bookings for today
+    const upcomingBookings = await Booking.find({
+      paymentStatus: "Completed",
+      showDate: { $regex: new RegExp(today) },
+    });
+
+    for (const booking of upcomingBookings) {
+      if (!booking.reminderSent) {
+        await sendShowReminder(booking.userEmail, booking);
+        booking.reminderSent = true;
+        await booking.save();
+        console.log(`[ReminderService] Reminder sent to ${booking.userEmail} for show ${booking.showId}`);
       }
-
-      await sendReminder(booking.userEmail, {
-        movieName,
-        showDate: booking.showDate,
-        showTime: booking.showTime,
-        theatreName: booking.theatreName
-      });
     }
-  } catch (err) {
-    console.error('[ReminderService] Error:', err.message);
+  } catch (error) {
+    console.error("[ReminderService] Error checking show reminders:", error.message);
   }
-});
+};
 
-console.log('[ReminderService] Email reminder scheduler started');
+/**
+ * Initialize reminder cron job
+ * Runs every hour
+ */
+const initReminderCron = () => {
+  const task = cron.schedule("0 * * * *", () => {
+    checkAndSendReminders();
+  });
+
+  console.log("[ReminderService] Initialized email reminder cron job (every hour).");
+  return task;
+};
+
+module.exports = {
+  checkAndSendReminders,
+  initReminderCron,
+};

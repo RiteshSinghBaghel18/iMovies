@@ -1,0 +1,65 @@
+import dayjs from "dayjs";
+
+/**
+ * Parses showDate ("YYYY-MM-DD") and showTime (e.g., "10:00 AM", "01:00 PM", "1:30 pm")
+ * and checks if the showtime has already passed compared to current system time.
+ * 
+ * @param {string} showDate - Format "YYYY-MM-DD" or Date parseable
+ * @param {string} showTime - Format "hh:mm A" or "h:mm A"
+ * @param {number} bufferMinutes - Optional buffer before start time (default 0)
+ * @returns {boolean} - true if show is in the past, false if upcoming
+ */
+export const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
+  if (!showDate || !showTime) return false;
+
+  try {
+    // If showDate is formatted as YYYY-MM-DD
+    const dateMatch = showDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    let year, month, day;
+
+    if (dateMatch) {
+      year = parseInt(dateMatch[1], 10);
+      month = parseInt(dateMatch[2], 10) - 1; // 0-based month
+      day = parseInt(dateMatch[3], 10);
+    } else {
+      const d = new Date(showDate);
+      if (isNaN(d.getTime())) return false;
+      year = d.getFullYear();
+      month = d.getMonth();
+      day = d.getDate();
+    }
+
+    // Parse showTime e.g., "10:00 AM", "01:00 PM", "6:45 PM"
+    const timeMatch = showTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!timeMatch) return false;
+
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const meridian = timeMatch[3] ? timeMatch[3].toUpperCase() : null;
+
+    if (meridian === "PM" && hours < 12) {
+      hours += 12;
+    } else if (meridian === "AM" && hours === 12) {
+      hours = 0;
+    }
+
+    const showDateTime = new Date(year, month, day, hours, minutes, 0, 0);
+    const now = new Date();
+
+    // Check with optional buffer
+    return showDateTime.getTime() + bufferMinutes * 60 * 1000 <= now.getTime();
+  } catch (err) {
+    console.error("[isShowPast] Error parsing date/time:", err);
+    return false;
+  }
+};
+
+/**
+ * Returns a human friendly status for a showtime
+ */
+export const getShowStatus = (showDate, showTime) => {
+  if (isShowPast(showDate, showTime)) {
+    return { isPast: true, label: "Show Ended", badgeClass: "bg-slate-800 text-slate-500 border-slate-700" };
+  }
+  return { isPast: false, label: "Available", badgeClass: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+};

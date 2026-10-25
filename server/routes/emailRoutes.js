@@ -1,27 +1,15 @@
-/**
- * emailRoutes.js — Express routes for Brevo Transactional Email Service
- */
+const express = require("express");
+const router = express.Router();
+const emailController = require("../controllers/emailController");
+const authController = require("../controllers/authController");
 
-const router = require('express').Router();
-const {
-  sendOTP,
-  sendVerification,
-  sendPasswordReset,
-  sendBookingConfirmation,
-  sendCustomEmail,
-  getEmailStatus,
-  testEmail
-} = require('../controllers/emailController');
+// Status & Health
+router.get("/status", emailController.getEmailStatus);
 
-// Status & Verification Diagnostics
-router.get('/status', getEmailStatus);
-router.post('/test', testEmail);
+// Test Dispatch
+router.post("/test", emailController.sendTestEmail);
 
-// Core Transactional Email Endpoints
-router.post('/otp', sendOTP);
-router.post('/verify', sendVerification);
-router.post('/reset-password', sendPasswordReset);
-router.post('/booking-confirmation', sendBookingConfirmation);
-router.post('/send', sendCustomEmail);
+// Resend verification convenience endpoint
+router.post("/resend-verification", authController.resendVerification);
 
 module.exports = router;

@@ -1,495 +1,490 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { toast } from 'react-toastify';
-import { api } from '../utils/api';
-import dayjs from 'dayjs';
+import React, { useState, useMemo } from "react";
+import useFetch from "../hooks/useFetch";
+import api from "../utils/api";
+import Loader from "./Loader";
+import DigitalTicketModal from "./DigitalTicketModal";
+import { 
+  CreditCard, 
+  Search, 
+  RotateCcw, 
+  CheckCircle2, 
+  XCircle, 
+  Clock, 
+  AlertTriangle, 
+  Printer, 
+  RefreshCw, 
+  ShieldCheck,
+  TrendingDown,
+  DollarSign,
+  ArrowRight,
+  Filter
+} from "lucide-react";
+import { toast } from "react-toastify";
 
-function AdminTransactions() {
-  const [transactions, setTransactions] = useState([]);
-  const [summary, setSummary] = useState({
-    totalRevenue: 0,
-    totalRefunded: 0,
+const AdminTransactions = () => {
+  const [selectedStatus, setSelectedStatus] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTicket, setSelectedTicket] = useState(null);
+
+  // Refund Modal State
+  const [refundModalBooking, setRefundModalBooking] = useState(null);
+  const [refundReason, setRefundReason] = useState("Customer requested cancellation");
+  const [processingRefund, setProcessingRefund] = useState(false);
+
+  const { data, loading, error, refetch } = useFetch(
+    `/admin/transactions?status=${selectedStatus}&search=${encodeURIComponent(searchQuery)}`
+  );
+
+  const transactions = data?.transactions || [];
+  const metrics = data?.metrics || {
     totalTransactions: 0,
     completedCount: 0,
     refundedCount: 0,
     pendingCount: 0,
     cancelledCount: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Refund Modal State
-  const [selectedBookingForRefund, setSelectedBookingForRefund] = useState(null);
-  const [refundReason, setRefundReason] = useState('Customer requested refund');
-  const [refundProcessing, setRefundProcessing] = useState(false);
-
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      const res = await api.getAdminTransactions();
-      const list = res.data?.transactions || res.data?.bookings || [];
-      setTransactions(list);
-      if (res.data?.summary) {
-        setSummary(res.data.summary);
-      }
-    } catch (err) {
-      console.error('Error fetching admin transactions:', err);
-      toast.error('Failed to load transaction records');
-    } finally {
-      setLoading(false);
-    }
+    totalRevenue: 0,
+    totalRefunded: 0,
   };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  // Filter transactions by status & search
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((t) => {
-      const status = (t.paymentStatus || 'Completed').toLowerCase();
-      const matchesStatus =
-        statusFilter === 'All' ? true : status === statusFilter.toLowerCase();
-
-      const search = searchTerm.toLowerCase().trim();
-      const matchesSearch =
-        !search ||
-        (t.bookingId && t.bookingId.toLowerCase().includes(search)) ||
-        (t.userEmail && t.userEmail.toLowerCase().includes(search)) ||
-        (t.movieName && t.movieName.toLowerCase().includes(search)) ||
-        (t.theatreName && t.theatreName.toLowerCase().includes(search)) ||
-        (t.razorpayPaymentId && t.razorpayPaymentId.toLowerCase().includes(search)) ||
-        (t.razorpayOrderId && t.razorpayOrderId.toLowerCase().includes(search));
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [transactions, statusFilter, searchTerm]);
-
-  // Execute refund via backend API
+  // Trigger backend refund
   const handleConfirmRefund = async () => {
-    if (!selectedBookingForRefund) return;
-
-    const paymentIdentifier =
-      selectedBookingForRefund.razorpayPaymentId || selectedBookingForRefund.bookingId;
+    if (!refundModalBooking) return;
+    setProcessingRefund(true);
 
     try {
-      setRefundProcessing(true);
-      const res = await api.issueRefund(paymentIdentifier, {
-        amount: selectedBookingForRefund.totalAmount,
+      const paymentId = refundModalBooking.razorpayPaymentId || refundModalBooking.bookingId;
+      const res = await api.post(`/admin/refund/${paymentId}`, {
         reason: refundReason,
+        amount: refundModalBooking.totalAmount,
       });
 
-      if (res.data?.success) {
-        toast.success(
-          `💸 Refund of ₹${selectedBookingForRefund.totalAmount} processed successfully! Seats released.`
-        );
-        setSelectedBookingForRefund(null);
-        fetchTransactions();
+      if (res.data.success) {
+        toast.success(res.data.message || "Refund processed successfully!");
+        setRefundModalBooking(null);
+        refetch();
       } else {
-        toast.error(res.data?.message || 'Failed to process refund');
+        throw new Error(res.data.message || "Refund could not be completed.");
       }
     } catch (err) {
-      console.error('Refund execution error:', err);
-      toast.error(err.response?.data?.message || 'Error executing Razorpay refund');
+      console.error("[Refund Error]:", err);
+      toast.error(err.response?.data?.message || err.message || "Failed to process refund.");
     } finally {
-      setRefundProcessing(false);
+      setProcessingRefund(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const s = (status || 'Completed').toLowerCase();
-    if (s === 'completed') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/20 text-primary border border-primary/40 flex items-center gap-1 w-fit">
-          <i className="fa-solid fa-circle-check text-[10px]"></i>
-          Completed
-        </span>
-      );
+  // Status Badge Helper
+  const renderStatusBadge = (status) => {
+    switch (status) {
+      case "Completed":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <CheckCircle2 className="w-3 h-3" />
+            Completed
+          </span>
+        );
+      case "Refunded":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">
+            <RotateCcw className="w-3 h-3" />
+            Refunded
+          </span>
+        );
+      case "Pending":
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+            <Clock className="w-3 h-3" />
+            Pending
+          </span>
+        );
+      case "Cancelled":
+      case "Failed":
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+            <XCircle className="w-3 h-3" />
+            {status || "Cancelled"}
+          </span>
+        );
     }
-    if (s === 'refunded') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-zinc-900 text-zinc-300 border border-zinc-700 flex items-center gap-1 w-fit">
-          <i className="fa-solid fa-rotate-left text-[10px]"></i>
-          Refunded
-        </span>
-      );
-    }
-    if (s === 'pending') {
-      return (
-        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-zinc-900 text-zinc-400 border border-zinc-700 flex items-center gap-1 w-fit">
-          <i className="fa-solid fa-clock text-[10px] text-primary"></i>
-          Pending
-        </span>
-      );
-    }
-    return (
-      <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-zinc-900 text-zinc-400 border border-zinc-800 flex items-center gap-1 w-fit">
-        <i className="fa-solid fa-ban text-[10px]"></i>
-        {status || 'Cancelled'}
-      </span>
-    );
   };
 
   return (
     <div className="space-y-6">
-      {/* ── Summary Metrics Bar ───────────────────────────────── */}
+      
+      {/* Metrics Banner */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Settled Revenue */}
-        <div className="bg-[#121216] p-5 rounded-2xl border border-zinc-800 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase font-semibold text-zinc-400 tracking-wider block">
-              Settled Revenue
-            </span>
-            <span className="text-2xl font-black text-white font-mono mt-1 block">
-              ₹{summary.totalRevenue.toLocaleString()}
-            </span>
-            <span className="text-[11px] text-primary flex items-center gap-1 mt-1 font-semibold">
-              <i className="fa-solid fa-arrow-up"></i> {summary.completedCount} completed orders
-            </span>
+        
+        <div className="p-5 rounded-2xl bg-cinema-card border border-cinema-border space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] uppercase tracking-wider font-semibold">Total Revenue (Net)</span>
+            <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xl">
-            💳
-          </div>
+          <p className="text-2xl font-black text-emerald-400">
+            ₹{metrics.totalRevenue?.toLocaleString()}
+          </p>
+          <p className="text-[11px] text-slate-400">
+            {metrics.completedCount} successful payments
+          </p>
         </div>
 
-        {/* Metric 2: Total Refunded */}
-        <div className="bg-[#121216] p-5 rounded-2xl border border-zinc-800 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase font-semibold text-zinc-400 tracking-wider block">
-              Total Refunded
-            </span>
-            <span className="text-2xl font-black text-zinc-300 font-mono mt-1 block">
-              ₹{summary.totalRefunded.toLocaleString()}
-            </span>
-            <span className="text-[11px] text-zinc-400 flex items-center gap-1 mt-1 font-semibold">
-              <i className="fa-solid fa-rotate-left text-primary"></i> {summary.refundedCount} transactions refunded
-            </span>
+        <div className="p-5 rounded-2xl bg-cinema-card border border-cinema-border space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] uppercase tracking-wider font-semibold">Total Refunded</span>
+            <TrendingDown className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 flex items-center justify-center text-xl">
-            💸
-          </div>
+          <p className="text-2xl font-black text-purple-400">
+            ₹{metrics.totalRefunded?.toLocaleString()}
+          </p>
+          <p className="text-[11px] text-purple-400/80">
+            {metrics.refundedCount} transactions refunded
+          </p>
         </div>
 
-        {/* Metric 3: Active Transactions */}
-        <div className="bg-[#121216] p-5 rounded-2xl border border-zinc-800 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase font-semibold text-zinc-400 tracking-wider block">
-              Total Transactions
-            </span>
-            <span className="text-2xl font-black text-white font-mono mt-1 block">
-              {summary.totalTransactions}
-            </span>
-            <span className="text-[11px] text-zinc-400 mt-1 block">
-              Across Razorpay test gateway
-            </span>
+        <div className="p-5 rounded-2xl bg-cinema-card border border-cinema-border space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] uppercase tracking-wider font-semibold">Total Transactions</span>
+            <CreditCard className="w-4 h-4 text-primary" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xl">
-            📊
-          </div>
+          <p className="text-2xl font-black text-white">
+            {metrics.totalTransactions}
+          </p>
+          <p className="text-[11px] text-slate-400">
+            {metrics.pendingCount} pending / {metrics.cancelledCount} cancelled
+          </p>
         </div>
 
-        {/* Metric 4: Pending Checkouts */}
-        <div className="bg-[#121216] p-5 rounded-2xl border border-zinc-800 shadow-xl flex items-center justify-between">
-          <div>
-            <span className="text-xs uppercase font-semibold text-zinc-400 tracking-wider block">
-              Pending Checkouts
-            </span>
-            <span className="text-2xl font-black text-zinc-300 font-mono mt-1 block">
-              {summary.pendingCount}
-            </span>
-            <span className="text-[11px] text-zinc-400 mt-1 block">
-              Awaiting payment authorization
-            </span>
+        <div className="p-5 rounded-2xl bg-cinema-card border border-cinema-border space-y-1">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-[11px] uppercase tracking-wider font-semibold">Razorpay Test Gateway</span>
+            <ShieldCheck className="w-4 h-4 text-primary" />
           </div>
-          <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 text-primary flex items-center justify-center text-xl">
-            ⏳
+          <p className="text-sm font-bold text-white flex items-center gap-1.5 pt-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Active & Verified</span>
+          </p>
+          <p className="text-[11px] text-slate-400 font-mono truncate">
+            Key: rzp_test_TrN3oYMB...
+          </p>
+        </div>
+
+      </div>
+
+      {/* Filter and Search Bar */}
+      <div className="bg-cinema-card border border-cinema-border rounded-2xl p-4 shadow-md space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          
+          {/* Search Bar */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by Booking ID, Razorpay Payment ID, Customer Email, or Movie..."
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-primary transition-colors"
+            />
           </div>
+
+          {/* Status Filter Tabs */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
+            {["All", "Completed", "Refunded", "Pending", "Cancelled"].map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => setSelectedStatus(st)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+                  selectedStatus === st
+                    ? "bg-primary text-black font-bold shadow-md shadow-orange-500/30"
+                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => refetch()}
+              title="Refresh transaction data"
+              className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-600 transition-colors ml-1"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
         </div>
       </div>
 
-      {/* ── Search & Filter Controls ───────────────────────────── */}
-      <div className="bg-[#121216] p-4 rounded-xl border border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Status Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {['All', 'Completed', 'Refunded', 'Pending', 'Cancelled'].map((st) => (
-            <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
-                statusFilter === st
-                  ? 'bg-primary text-white shadow-lg shadow-orange-950/40'
-                  : 'bg-black/60 text-zinc-400 hover:text-white border border-white/10'
-              }`}
-            >
-              {st}
-            </button>
-          ))}
-        </div>
-
-        {/* Live Search Input */}
-        <div className="relative w-full md:w-80">
-          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-zinc-400 pointer-events-none">
-            <i className="fa-solid fa-magnifying-glass text-xs"></i>
-          </span>
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search email, movie, payment ID..."
-            className="w-full pl-9 pr-3 py-2 bg-[#0a0a0a] border border-zinc-800 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-primary text-xs"
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-400 hover:text-white"
-            >
-              <i className="fa-solid fa-circle-xmark text-xs"></i>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Transactions Data Table ───────────────────────────── */}
-      <div className="bg-[#121216] rounded-2xl border border-zinc-800 shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-black border-b border-zinc-800 text-zinc-400 uppercase font-mono tracking-wider">
-                <th className="py-3.5 px-4 font-semibold">Booking ID</th>
-                <th className="py-3.5 px-4 font-semibold">Razorpay Payment ID</th>
-                <th className="py-3.5 px-4 font-semibold">Customer</th>
-                <th className="py-3.5 px-4 font-semibold">Movie Title</th>
-                <th className="py-3.5 px-4 font-semibold">Show Details</th>
-                <th className="py-3.5 px-4 font-semibold">Seats</th>
-                <th className="py-3.5 px-4 font-semibold">Amount</th>
-                <th className="py-3.5 px-4 font-semibold">Status</th>
-                <th className="py-3.5 px-4 font-semibold">Date & Time</th>
-                <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {loading ? (
+      {/* Main Transactions Table */}
+      <div className="bg-cinema-card border border-cinema-border rounded-2xl overflow-hidden shadow-xl">
+        {loading ? (
+          <div className="py-16">
+            <Loader message="Loading transactions and refund audit..." />
+          </div>
+        ) : transactions.length === 0 ? (
+          <div className="text-center py-16 px-4">
+            <CreditCard className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-white">No Transactions Found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              No payment records match your active search and status filter.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold border-b border-slate-800">
                 <tr>
-                  <td colSpan="10" className="py-12 text-center text-gray-400">
-                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                    Loading transaction records...
-                  </td>
+                  <th className="py-3.5 px-4">Booking ID</th>
+                  <th className="py-3.5 px-4">Payment & Gateway IDs</th>
+                  <th className="py-3.5 px-4">Customer</th>
+                  <th className="py-3.5 px-4">Movie & Seats</th>
+                  <th className="py-3.5 px-4">Amount</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4">Timestamp</th>
+                  <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
-              ) : filteredTransactions.length === 0 ? (
-                <tr>
-                  <td colSpan="10" className="py-12 text-center text-gray-500 italic">
-                    No transaction records found matching your filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredTransactions.map((tx) => {
-                  const bId = tx.bookingId || tx._id || 'N/A';
-                  const isCompleted = (tx.paymentStatus || '').toLowerCase() === 'completed';
-                  const isRefunded = (tx.paymentStatus || '').toLowerCase() === 'refunded';
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-slate-300">
+                {transactions.map((t) => {
+                  const isEligibleForRefund = t.paymentStatus === "Completed";
+                  const isRefunded = t.paymentStatus === "Refunded";
 
                   return (
-                    <tr key={bId} className="hover:bg-gray-900/50 transition">
+                    <tr key={t.bookingId} className="hover:bg-slate-900/50 transition-colors">
+                      
                       {/* Booking ID */}
-                      <td className="py-3 px-4 font-mono text-gray-300 font-semibold" title={bId}>
-                        {bId.substring(0, 8)}...
+                      <td className="py-3.5 px-4">
+                        <span className="font-mono font-bold text-red-400">#{t.bookingId}</span>
                       </td>
 
-                      {/* Razorpay Payment ID */}
-                      <td className="py-3 px-4">
-                        {tx.razorpayPaymentId ? (
-                          <span className="font-mono text-[11px] px-2 py-0.5 rounded bg-zinc-900 text-zinc-300 border border-zinc-700">
-                            {tx.razorpayPaymentId}
+                      {/* Payment & Gateway IDs */}
+                      <td className="py-3.5 px-4 space-y-0.5">
+                        <div className="flex items-center gap-1 font-mono text-[11px] text-slate-200">
+                          <span className="text-slate-400">PayID:</span>
+                          <span className="text-primary font-semibold truncate max-w-[140px]">
+                            {t.razorpayPaymentId || t.transactionId || "—"}
                           </span>
-                        ) : (
-                          <span className="text-gray-500 italic text-[11px]">—</span>
+                        </div>
+                        {t.razorpayOrderId && (
+                          <div className="flex items-center gap-1 font-mono text-[10px] text-slate-400">
+                            <span>Ord:</span>
+                            <span className="truncate max-w-[140px]">{t.razorpayOrderId}</span>
+                          </div>
+                        )}
+                        {t.refundId && (
+                          <div className="flex items-center gap-1 font-mono text-[10px] text-purple-400">
+                            <span>Rfnd:</span>
+                            <span className="truncate max-w-[140px]">{t.refundId}</span>
+                          </div>
                         )}
                       </td>
 
                       {/* Customer */}
-                      <td className="py-3 px-4 text-white font-medium max-w-[150px] truncate" title={tx.userEmail}>
-                        {tx.userEmail}
+                      <td className="py-3.5 px-4">
+                        <p className="font-semibold text-white truncate max-w-[140px]">{t.userEmail}</p>
+                        <p className="text-[10px] text-slate-400">{t.paymentMethod || "Razorpay"}</p>
                       </td>
 
-                      {/* Movie Title */}
-                      <td className="py-3 px-4 font-semibold text-white max-w-[150px] truncate" title={tx.movieName}>
-                        {tx.movieName || 'Movie Feature'}
-                      </td>
-
-                      {/* Show Details */}
-                      <td className="py-3 px-4 text-gray-300">
-                        <div>{tx.theatreName}</div>
-                        <div className="text-[10px] text-gray-500">
-                          {tx.showDate} • {tx.showTime}
-                        </div>
-                      </td>
-
-                      {/* Seats */}
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1 max-w-[120px]">
-                          {(tx.selectedSeats || []).map((s) => (
-                            <span
-                              key={s}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-zinc-900 text-zinc-300 border border-zinc-700"
-                            >
-                              {s}
-                            </span>
-                          ))}
-                        </div>
+                      {/* Movie & Seats */}
+                      <td className="py-3.5 px-4">
+                        <p className="font-bold text-white truncate max-w-[160px]">
+                          {t.movieDetails?.movieName || "Movie"}
+                        </p>
+                        <p className="text-[11px] text-emerald-400 font-mono">
+                          Seats: {t.selectedSeats?.join(", ") || "—"}
+                        </p>
                       </td>
 
                       {/* Amount */}
-                      <td className="py-3 px-4 font-mono font-bold text-white">
-                        ₹{tx.totalAmount}
+                      <td className="py-3.5 px-4">
+                        <span className="text-sm font-black text-amber-400">₹{t.totalAmount}</span>
+                        {isRefunded && (
+                          <p className="text-[10px] text-purple-400 font-semibold">
+                            (Refunded ₹{t.refundAmount || t.totalAmount})
+                          </p>
+                        )}
                       </td>
 
                       {/* Status */}
-                      <td className="py-3 px-4">
-                        {getStatusBadge(tx.paymentStatus)}
+                      <td className="py-3.5 px-4">
+                        {renderStatusBadge(t.paymentStatus)}
                       </td>
 
                       {/* Timestamp */}
-                      <td className="py-3 px-4 text-gray-400 text-[11px]">
-                        {dayjs(tx.createdAt).format('DD MMM, h:mm A')}
+                      <td className="py-3.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                        {new Date(t.createdAt).toLocaleDateString()}
+                        <span className="block text-[10px] text-slate-400">
+                          {new Date(t.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-right">
-                        {isCompleted ? (
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
+                          
+                          {/* View Digital Pass */}
                           <button
-                            onClick={() => setSelectedBookingForRefund(tx)}
-                            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/20 hover:bg-primary text-primary hover:text-black border border-primary/40 transition duration-150 flex items-center gap-1.5 ml-auto shadow-sm"
-                            title="Process refund and release seats"
+                            type="button"
+                            onClick={() => setSelectedTicket(t)}
+                            title="Inspect Digital E-Ticket Pass"
+                            className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1 transition-colors"
                           >
-                            <i className="fa-solid fa-rotate-left text-[11px]"></i>
-                            <span>Issue Refund</span>
+                            <Printer className="w-3 h-3" />
+                            Pass
                           </button>
-                        ) : isRefunded ? (
-                          <span
-                            className="text-[11px] text-zinc-500 italic block font-mono"
-                            title={`Refund ID: ${tx.refundId || 'N/A'}`}
-                          >
-                            Refunded ✓
-                          </span>
-                        ) : (
-                          <span className="text-gray-500 text-[11px]">—</span>
-                        )}
+
+                          {/* Issue Refund / Cancel Button */}
+                          {isEligibleForRefund && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRefundModalBooking(t);
+                                setRefundReason("Customer cancellation request via Admin");
+                              }}
+                              title="Process Razorpay refund & free up seats"
+                              className="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 text-xs font-bold flex items-center gap-1 transition-all shadow-sm"
+                            >
+                              <RotateCcw className="w-3 h-3" />
+                              Issue Refund
+                            </button>
+                          )}
+
+                          {isRefunded && (
+                            <span className="text-[11px] font-semibold text-purple-400 px-2 py-1 bg-purple-500/10 rounded">
+                              Refund Settled
+                            </span>
+                          )}
+
+                        </div>
                       </td>
+
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* ── Interactive Refund Confirmation Modal ──────────────── */}
-      {selectedBookingForRefund && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 animate-fade-in">
-          <div className="bg-[#0d0d11] border border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-white">
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+      {/* CONFIRM REFUND INTERACTIVE MODAL */}
+      {refundModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-cinema-card border border-cinema-border rounded-3xl p-6 shadow-2xl space-y-5">
+            
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-lg">
-                  💸
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center border border-rose-500/30">
+                  <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold">Issue Booking Refund</h3>
-                  <p className="text-xs text-zinc-400">Connected with Razorpay Payment Gateway</p>
+                  <h3 className="font-bold text-white text-base">Issue Razorpay Refund</h3>
+                  <p className="text-xs text-slate-400">Booking #{refundModalBooking.bookingId}</p>
                 </div>
               </div>
               <button
-                onClick={() => setSelectedBookingForRefund(null)}
-                className="text-zinc-400 hover:text-white p-1"
+                type="button"
+                onClick={() => setRefundModalBooking(null)}
+                disabled={processingRefund}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg"
               >
-                <i className="fa-solid fa-xmark text-lg"></i>
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Booking Details Summary */}
-            <div className="p-4 rounded-xl bg-[#050508] border border-zinc-800 space-y-2.5 text-xs">
+            {/* Refund Snapshot */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-400">Booking ID:</span>
-                <span className="font-mono text-white font-semibold">{selectedBookingForRefund.bookingId}</span>
+                <span className="text-slate-400">Customer:</span>
+                <span className="font-semibold text-white">{refundModalBooking.userEmail}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Customer:</span>
-                <span className="text-white font-semibold">{selectedBookingForRefund.userEmail}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Movie Title:</span>
-                <span className="text-white font-semibold">{selectedBookingForRefund.movieName}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Seats to Release:</span>
-                <span className="text-primary font-mono font-bold">
-                  {(selectedBookingForRefund.selectedSeats || []).join(', ')}
+                <span className="text-slate-400">Movie & Theatre:</span>
+                <span className="text-slate-200">
+                  {refundModalBooking.movieDetails?.movieName} • {refundModalBooking.theatreDetails?.theatreName}
                 </span>
               </div>
-              {selectedBookingForRefund.razorpayPaymentId && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Razorpay Payment ID:</span>
-                  <span className="font-mono text-zinc-300">{selectedBookingForRefund.razorpayPaymentId}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t border-gray-800 pt-2 text-sm font-bold">
-                <span className="text-gray-300">Refund Amount:</span>
-                <span className="text-primary font-mono text-base">₹{selectedBookingForRefund.totalAmount}</span>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Seats Reserved:</span>
+                <span className="font-mono font-bold text-emerald-400">
+                  {refundModalBooking.selectedSeats?.join(", ")}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Payment Gateway ID:</span>
+                <span className="font-mono text-primary font-semibold">
+                  {refundModalBooking.razorpayPaymentId || refundModalBooking.transactionId}
+                </span>
+              </div>
+              <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm">
+                <span className="font-bold text-white">Refund Amount:</span>
+                <span className="text-xl font-black text-rose-400">₹{refundModalBooking.totalAmount}</span>
               </div>
             </div>
 
-            {/* Refund Reason Input */}
+            {/* Refund Reason */}
             <div>
-              <label className="block text-xs font-semibold uppercase text-gray-400 tracking-wider mb-2">
-                Reason for Refund / Cancellation
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Refund Reason / Audit Note
               </label>
               <input
                 type="text"
                 value={refundReason}
                 onChange={(e) => setRefundReason(e.target.value)}
-                placeholder="e.g. Customer cancelled show in advance"
-                className="w-full px-3.5 py-2.5 rounded-lg bg-black/60 border border-white/10 text-white text-xs focus:outline-none focus:border-primary"
+                placeholder="e.g. Customer cancelled via support, showtime rescheduled"
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-rose-500"
               />
             </div>
 
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-orange-200 text-xs">
-              <i className="fa-solid fa-triangle-exclamation mr-1.5 text-primary"></i>
-              This will trigger a live Razorpay test-mode refund of <strong>₹{selectedBookingForRefund.totalAmount}</strong>, mark the reservation as <strong>Refunded</strong>, and immediately release the seats back to available status.
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-300 leading-relaxed">
+              ⚠️ <span className="font-bold">Important:</span> Executing this refund will invoke Razorpay's API (<code className="text-white">razorpay.payments.refund()</code>), set booking status to <strong className="text-white">Refunded</strong>, and immediately release seats <strong className="text-white">{refundModalBooking.selectedSeats?.join(", ")}</strong> back into the public seating map.
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setSelectedBookingForRefund(null)}
-                disabled={refundProcessing}
-                className="px-4 py-2 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-zinc-300 transition"
+                onClick={() => setRefundModalBooking(null)}
+                disabled={processingRefund}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-300"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmRefund}
-                disabled={refundProcessing}
-                className="px-5 py-2 rounded-none text-xs font-black bg-primary hover:bg-[#ff7700] text-black shadow-lg transition flex items-center gap-2"
+                disabled={processingRefund}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-lg shadow-rose-600/30 flex items-center gap-1.5 transition-all disabled:opacity-50"
               >
-                {refundProcessing ? (
+                {processingRefund ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent animate-spin"></div>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                     <span>Processing Refund...</span>
                   </>
                 ) : (
                   <>
-                    <i className="fa-solid fa-rotate-left"></i>
-                    <span>Confirm &amp; Process Refund</span>
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Confirm & Process Refund</span>
                   </>
                 )}
               </button>
             </div>
+
           </div>
         </div>
       )}
+
+      {/* Digital Ticket Modal */}
+      {selectedTicket && (
+        <DigitalTicketModal
+          booking={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
+        />
+      )}
+
     </div>
   );
-}
+};
 
 export default AdminTransactions;

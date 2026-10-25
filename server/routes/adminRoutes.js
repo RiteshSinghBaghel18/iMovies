@@ -1,14 +1,13 @@
-const router = require('express').Router();
-const {
-  getAllTransactions,
-  processRefund,
-  getAdminDashboardStats
-} = require('../controllers/adminController');
-const fetchUser = require('../middlewares/fetchUser');
+const express = require("express");
+const router = express.Router();
+const adminController = require("../controllers/adminController");
+const { fetchAdmin } = require("../middlewares/fetchUser");
 
-// Admin transaction and refund management routes
-router.get('/transactions', fetchUser, getAllTransactions);
-router.post('/refund/:paymentId', fetchUser, processRefund);
-router.get('/stats', fetchUser, getAdminDashboardStats);
+// All routes require administrative permissions
+router.use(fetchAdmin);
+
+// Transactions & Refund Management
+router.get("/transactions", adminController.getAllTransactions);
+router.post("/refund/:paymentId", adminController.processRefund);
 
 module.exports = router;

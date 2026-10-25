@@ -1,34 +1,36 @@
 # Dependencies
 node_modules/
 */node_modules/
+client/node_modules/
+server/node_modules/
 
-# Environment variables & credentials
-.env
-.env.*
-!.env.example
-*.env
-server/.env
-client/.env
-
-# Production build outputs
-dist/
-dist-ssr/
-build/
+# Production builds
 client/dist/
+dist/
+build/
 
-# Logs & cache
-logs/
-*.log
+# Environment files & Secrets
+.env
+.env.local
+.env.*.local
+client/.env
+server/.env
+
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.DS_Store
-*.local
+*.log
 
-# IDE & Editor configs
-.vscode/
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
 .idea/
+.vscode/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
+*.sw?

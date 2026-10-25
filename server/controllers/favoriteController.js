@@ -1,250 +1,78 @@
-const Favorite = require('../models/favoriteModel');
-const Movie = require('../models/movieModel');
-const User = require('../models/userModel');
+const Favorite = require("../models/favoriteModel");
+const Movie = require("../models/movieModel");
 
-// Helper to fetch populated favorite movies for a user
-const fetchUserFavoriteMovies = async (userEmail) => {
-  // Query both User document favorites array and Favorite collection
-  const user = await User.findOne({ email: userEmail });
-  const favDocs = await Favorite.find({ userEmail });
-
-  const idSet = new Set();
-  if (user && Array.isArray(user.favorites)) {
-    user.favorites.forEach(id => id && idSet.add(String(id)));
-  }
-  favDocs.forEach(f => f.movieId && idSet.add(String(f.movieId)));
-
-  const movieIds = Array.from(idSet);
-  if (movieIds.length === 0) return [];
-
-  // Find movies matching MongoDB ObjectId or string id
-  const movies = await Movie.find({
-    $or: [
-      { _id: { $in: movieIds.filter(id => id.match(/^[0-9a-fA-F]{24}$/)) } },
-      { tmdbId: { $in: movieIds.map(id => Number(id)).filter(n => !isNaN(n)) } }
-    ]
-  });
-
-  return movies;
-};
-
-/**
- * Toggle Favorite Movie Status
- * Uses MongoDB $pull if movie is already favorited, and $addToSet if not
- * Returns updated favorite list and isFavorite state
- */
-const toggleFavorite = async (req, res) => {
+// GET USER'S FAVORITES
+exports.getUserFavorites = async (req, res) => {
   try {
-    const movieId = req.body.movieId || req.params.movieId;
-    const userEmail = req.user?.email || req.body.userEmail;
+    const userEmail = req.user.email;
+    const favorites = await Favorite.find({ userEmail }).sort({ createdAt: -1 });
 
-    if (!movieId) {
-      return res.status(400).json({
-        success: false,
-        message: 'movieId is required'
-      });
-    }
+    const movieIds = favorites.map((f) => f.movieId);
+    const movies = await Movie.find({ _id: { $in: movieIds } });
 
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'userEmail is required'
-      });
-    }
-
-    const strMovieId = String(movieId).trim();
-
-    // Check if the movie is currently favorited by user
-    const existingFavDoc = await Favorite.findOne({ userEmail, movieId: strMovieId });
-    const userWithFav = await User.findOne({ email: userEmail, favorites: strMovieId });
-    const isCurrentlyFavorited = Boolean(existingFavDoc || userWithFav);
-
-    let isFavorite = false;
-    let message = '';
-
-    if (isCurrentlyFavorited) {
-      // 1. Remove using MongoDB $pull operator on User favorites array
-      await User.findOneAndUpdate(
-        { email: userEmail },
-        { $pull: { favorites: strMovieId } },
-        { new: true }
-      );
-
-      // Remove from Favorite collection
-      await Favorite.deleteMany({ userEmail, movieId: strMovieId });
-
-      isFavorite = false;
-      message = 'Movie removed from favorites';
-    } else {
-      // 2. Add using MongoDB $addToSet operator on User favorites array
-      await User.findOneAndUpdate(
-        { email: userEmail },
-        { $addToSet: { favorites: strMovieId } },
-        { new: true, upsert: true }
-      );
-
-      // Upsert in Favorite collection
-      await Favorite.findOneAndUpdate(
-        { userEmail, movieId: strMovieId },
-        { userEmail, movieId: strMovieId },
-        { upsert: true, new: true }
-      );
-
-      isFavorite = true;
-      message = 'Movie added to favorites';
-    }
-
-    // Fetch updated favorites list
-    const updatedMovies = await fetchUserFavoriteMovies(userEmail);
-
-    return res.status(200).json({
+    res.json({
       success: true,
-      isFavorite,
-      message,
-      data: updatedMovies,
-      favorites: updatedMovies,
-      movieId: strMovieId
-    });
-  } catch (error) {
-    console.error('[favoriteController] Error toggling favorite:', error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error toggling favorite movie'
-    });
-  }
-};
-
-// Add a movie to favorites (using $addToSet)
-const addFavorite = async (req, res) => {
-  try {
-    const movieId = req.body.movieId;
-    const userEmail = req.user?.email || req.body.userEmail;
-
-    if (!movieId) {
-      return res.status(400).json({
-        success: false,
-        message: 'movieId is required'
-      });
-    }
-
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'userEmail is required'
-      });
-    }
-
-    const strMovieId = String(movieId).trim();
-
-    // Use $addToSet on User model
-    await User.findOneAndUpdate(
-      { email: userEmail },
-      { $addToSet: { favorites: strMovieId } },
-      { new: true, upsert: true }
-    );
-
-    // Upsert into Favorite collection
-    const favorite = await Favorite.findOneAndUpdate(
-      { userEmail, movieId: strMovieId },
-      { userEmail, movieId: strMovieId },
-      { upsert: true, new: true }
-    );
-
-    const updatedMovies = await fetchUserFavoriteMovies(userEmail);
-
-    return res.status(200).json({
-      success: true,
-      isFavorite: true,
-      message: 'Movie added to favorites',
-      favorite,
-      favorites: updatedMovies,
-      data: updatedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error adding to favorites'
-    });
-  }
-};
-
-// Remove a movie from favorites (using $pull)
-const removeFavorite = async (req, res) => {
-  try {
-    const movieId = req.body.movieId || req.params.movieId;
-    const userEmail = req.user?.email || req.body.userEmail;
-
-    if (!movieId) {
-      return res.status(400).json({
-        success: false,
-        message: 'movieId is required'
-      });
-    }
-
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'userEmail is required'
-      });
-    }
-
-    const strMovieId = String(movieId).trim();
-
-    // Use $pull on User model
-    await User.findOneAndUpdate(
-      { email: userEmail },
-      { $pull: { favorites: strMovieId } },
-      { new: true }
-    );
-
-    await Favorite.deleteMany({ userEmail, movieId: strMovieId });
-    const updatedMovies = await fetchUserFavoriteMovies(userEmail);
-
-    return res.status(200).json({
-      success: true,
-      isFavorite: false,
-      message: 'Removed from favorites',
-      favorites: updatedMovies,
-      data: updatedMovies
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error removing from favorites'
-    });
-  }
-};
-
-// Get all favorite movies for user
-const getUserFavorites = async (req, res) => {
-  try {
-    const userEmail = req.user?.email || req.query.userEmail;
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'User email is required'
-      });
-    }
-
-    const movies = await fetchUserFavoriteMovies(userEmail);
-
-    return res.status(200).json({
-      success: true,
-      data: movies,
+      count: movies.length,
       favorites: movies,
-      movies
     });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching user favorites'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-module.exports = {
-  toggleFavorite,
-  addFavorite,
-  removeFavorite,
-  getUserFavorites
+// ADD TO FAVORITES
+exports.addFavorite = async (req, res) => {
+  try {
+    const { movieId } = req.body;
+    const userEmail = req.user.email;
+
+    if (!movieId) {
+      return res.status(400).json({ success: false, message: "Movie ID is required." });
+    }
+
+    const movie = await Movie.findById(movieId);
+    if (!movie) {
+      return res.status(404).json({ success: false, message: "Movie not found." });
+    }
+
+    const existing = await Favorite.findOne({ userEmail, movieId });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "Movie already in favorites." });
+    }
+
+    const favorite = await Favorite.create({ userEmail, movieId });
+    res.status(201).json({ success: true, message: "Movie added to your watchlist!", favorite });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// REMOVE FROM FAVORITES
+exports.removeFavorite = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const userEmail = req.user.email;
+
+    const removed = await Favorite.findOneAndDelete({ userEmail, movieId });
+    if (!removed) {
+      return res.status(404).json({ success: false, message: "Movie not in favorites." });
+    }
+
+    res.json({ success: true, message: "Movie removed from watchlist." });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// CHECK IF MOVIE IS FAVORITE
+exports.checkFavorite = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const userEmail = req.user.email;
+
+    const exists = await Favorite.findOne({ userEmail, movieId });
+    res.json({ success: true, isFavorite: !!exists });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };

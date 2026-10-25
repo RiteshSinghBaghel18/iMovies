@@ -1,393 +1,457 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { api } from '../utils/api';
-import { useTheme } from '../utils/ThemeContext';
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Film, Lock, Mail, ShieldCheck, AlertTriangle, Send, X, CheckCircle2, KeyRound, Eye, EyeOff } from "lucide-react";
+import { toast } from "react-toastify";
+import api from "../utils/api";
 
-function Login() {
-  const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState('user'); // 'user' or 'admin'
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
-  const [loading, setLoading] = useState(false);
-  const [unverifiedEmail, setUnverifiedEmail] = useState(null);
+const Login = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Forgot password modal state
+  // Unverified email banner state
+  const [unverifiedEmail, setUnverifiedEmail] = useState(null);
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  // OTP modal state on Login
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [loginOtp, setLoginOtp] = useState("");
+  const [loginOtpLoading, setLoginOtpLoading] = useState(false);
+
+  // Forgot Password modal state
   const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
 
+  const { login, verifyOtp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const from = location.state?.from?.pathname || (isAdmin ? "/admin" : "/home");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.email || !formData.password) {
-      toast.error('Please enter both email and password');
-      return;
-    }
+    if (!email || !password) return;
 
-    try {
-      setLoading(true);
-      setUnverifiedEmail(null);
-      let response;
-      if (activeTab === 'user') {
-        response = await api.loginUser({
-          email: formData.email,
-          password: formData.password,
-        });
+    setLoading(true);
+    setUnverifiedEmail(null);
+    const result = await login(email, password, isAdmin);
+    setLoading(false);
+
+    if (result?.success) {
+      if (result.role === "admin") {
+        navigate("/admin");
       } else {
-        response = await api.loginAdmin({
-          email: formData.email,
-          password: formData.password,
-        });
+        navigate(from === "/admin" ? "/home" : from);
       }
-
-      const data = response.data;
-      if (data.success || data.token) {
-        const token = data.token || data.authToken;
-        const role = activeTab;
-        const userObj = data.user || data.admin || { email: formData.email, role };
-
-        localStorage.setItem('imovies-token', token);
-        localStorage.setItem('imovies-role', role);
-        localStorage.setItem('imovies-user', JSON.stringify(userObj));
-
-        toast.success(`Welcome back, ${userObj.username || formData.email}!`);
-        if (role === 'admin') {
-          navigate('/admin');
-        } else {
-          navigate('/home');
-        }
-      } else {
-        toast.error(data.message || 'Login failed');
-      }
-    } catch (err) {
-      const errData = err.response?.data;
-      if (errData?.isUnverified) {
-        setUnverifiedEmail(errData.email || formData.email);
-        toast.warning(errData.message || 'Please verify your email address to log in.');
-      } else {
-        toast.error(errData?.message || err.message || 'Login failed. Please check credentials.');
-      }
-    } finally {
-      setLoading(false);
+    } else if (result?.requiresVerification) {
+      setUnverifiedEmail(result.email || email);
     }
   };
 
-  const handleForgotPasswordSubmit = async (e) => {
+  const handleResendVerification = async () => {
+    const targetEmail = unverifiedEmail || email;
+    if (!targetEmail) return;
+
+    setResendingVerification(true);
+    try {
+      const res = await api.post("/auth/resend-verification", { email: targetEmail });
+      if (res.data.success) {
+        toast.success(res.data.message || "Fresh verification code & link sent! Please check your email.");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Could not resend verification email.");
+    } finally {
+      setResendingVerification(false);
+    }
+  };
+
+  const handleVerifyLoginOtp = async (e) => {
     e.preventDefault();
-    if (!forgotEmail.trim()) {
-      toast.error('Please enter your account email address');
+    const targetEmail = unverifiedEmail || email;
+    if (!loginOtp || loginOtp.length !== 6) {
+      toast.error("Please enter the complete 6-digit OTP code.");
       return;
     }
+
+    setLoginOtpLoading(true);
+    const result = await verifyOtp(targetEmail, loginOtp);
+    setLoginOtpLoading(false);
+
+    if (result?.success) {
+      setShowOtpModal(false);
+      navigate(from === "/admin" ? "/home" : from);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+
+    setForgotLoading(true);
     try {
-      setForgotLoading(true);
-      const res = await api.forgotPassword({
-        email: forgotEmail.trim(),
-        role: activeTab,
-      });
-      setForgotSuccess(true);
-      toast.success("Password recovery link sent! (Didn't receive it? Please check your spam or junk folder.)");
+      const res = await api.post("/auth/forgot-password", { email: forgotEmail });
+      if (res.data.success) {
+        setForgotSuccess(true);
+        toast.success("Password reset instructions sent to your email!");
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to request password reset.');
+      toast.error(err.response?.data?.message || "Failed to process password reset request.");
     } finally {
       setForgotLoading(false);
     }
   };
 
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-black text-white' : 'bg-[#f4f4f5] text-zinc-900'}`}>
-      <Header />
-
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
-        <div
-          className="w-full max-w-md border rounded-none p-6 sm:p-8 relative overflow-hidden z-10 shadow-2xl transition-colors"
-          style={{ backgroundColor: isDark ? '#121216' : '#ffffff' }}
-        >
-          {/* Top highlight bar */}
-          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#ff6600] via-[#ff7700] to-[#ffa333]"></div>
-
-          <div className="text-center mb-6">
-            <span className="inline-flex items-center justify-center w-12 h-12 rounded-none bg-primary/10 border border-primary/20 text-primary text-xl mb-3">
-              🎬
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">Sign In to iMovies</h2>
-            <p className="text-zinc-400 text-xs sm:text-sm mt-1">Book premier seats for blockbuster releases</p>
+    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-[#000000]">
+      <div className="w-full max-w-md">
+        
+        {/* Amazon Prime Replica Card */}
+        <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-8 shadow-2xl relative">
+          
+          {/* Logo & Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2.5 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 shadow-md">
+                <Film className="w-5 h-5" />
+              </div>
+              <span className="text-2xl font-black text-white">
+                i<span className="text-[#ff6600]">Movies</span>
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-white">
+              {isAdmin ? "Admin Portal Access" : "Sign In to Your Account"}
+            </h2>
+            <p className="text-xs text-[#a1a1aa] mt-1">
+              {isAdmin
+                ? "Enter verified administrative credentials to manage shows and bookings"
+                : "Book tickets, select seats in real-time, and download passes"}
+            </p>
           </div>
 
-          {/* Unverified account warning banner */}
+          {/* Unverified Email Alert Banner */}
           {unverifiedEmail && (
-            <div className="mb-4 p-3 border border-orange-500/40 bg-orange-500/10 text-xs text-orange-200 flex flex-col gap-2">
-              <div className="flex items-center gap-2 font-bold text-primary">
-                <i className="fa-solid fa-triangle-exclamation"></i>
-                <span>Email Verification Required</span>
+            <div className="mb-6 p-4 rounded-xl bg-amber-950/40 border border-amber-600/50 text-amber-200">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="text-xs space-y-2 flex-1">
+                  <p className="font-bold text-amber-300">Account Needs Activation</p>
+                  <p className="text-amber-200/90 leading-relaxed">
+                    Your email (<strong>{unverifiedEmail}</strong>) is not verified yet. We sent you an activation email with a 6-digit OTP code and a one-click link.
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowOtpModal(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-bold text-[11px] shadow-sm transition-all"
+                    >
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Enter 6-Digit OTP</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleResendVerification}
+                      disabled={resendingVerification}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181f] hover:bg-[#3f3f46] text-[#ff6600] border border-[#27272a] font-bold text-[11px] shadow-sm transition-all disabled:opacity-50"
+                    >
+                      <Send className="w-3 h-3" />
+                      <span>{resendingVerification ? "Sending..." : "Resend OTP & Link"}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="text-zinc-300">
-                A verification code was sent to <strong>{unverifiedEmail}</strong>.
+            </div>
+          )}
+
+          {/* Role Switcher Tabs (Only Sign In as Admin, No Signup for Admin) */}
+          <div className="grid grid-cols-2 p-1 rounded-xl bg-[#09090b] border border-[#27272a] mb-6">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdmin(false);
+                setUnverifiedEmail(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                !isAdmin
+                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/30"
+                  : "text-[#a1a1aa] hover:text-white"
+              }`}
+            >
+              Movie Fan (User)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdmin(true);
+                setUnverifiedEmail(null);
+              }}
+              className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                isAdmin
+                  ? "bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30"
+                  : "text-[#a1a1aa] hover:text-white"
+              }`}
+            >
+              Sign In as Admin
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                {isAdmin ? "Admin Email Address" : "Email Address"}
+              </label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                  Password
+                </label>
+                {!isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotEmail(email);
+                      setForgotSuccess(false);
+                      setShowForgotModal(true);
+                    }}
+                    className="text-xs text-[#ff6600] hover:text-[#ff7700] transition-colors font-medium hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-white transition-colors focus:outline-none p-1"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 transition-all shadow-lg hover:scale-[1.02] disabled:opacity-50 mt-2 ${
+                isAdmin
+                  ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/30"
+                  : "bg-[#ff6600] hover:bg-[#ff7700] shadow-[#ff6600]/30"
+              }`}
+            >
+              {loading ? "Authenticating..." : isAdmin ? "Sign In as Admin" : "Sign In to iMovies"}
+            </button>
+          </form>
+
+          {/* Conditional Bottom Footer (No Admin Signup Allowed) */}
+          {isAdmin ? (
+            <div className="mt-6 p-3.5 rounded-xl bg-[#09090b] border border-[#27272a] text-center">
+              <p className="text-[11px] text-[#a1a1aa] leading-relaxed">
+                🔒 <strong>Administrator Access:</strong> New admin accounts can only be provisioned by existing administrators through the Admin Dashboard.
               </p>
-              <Link
-                to={`/verify?email=${encodeURIComponent(unverifiedEmail)}`}
-                className="self-start px-3 py-1 bg-primary text-black font-bold text-xs uppercase tracking-wider"
-              >
-                Enter Verification Code &rarr;
+            </div>
+          ) : (
+            <div className="mt-6 text-center text-xs text-[#a1a1aa]">
+              New to iMovies?{" "}
+              <Link to="/register" className="text-[#ff6600] hover:text-[#ff7700] font-bold transition-colors">
+                Create an account
               </Link>
             </div>
           )}
 
-          {/* Role Tabs */}
-          <div className="flex p-1 mb-6 border border-zinc-800" style={{ backgroundColor: isDark ? '#0a0a0a' : '#f4f4f5' }}>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('user'); setUnverifiedEmail(null); setShowPassword(false); }}
-              className={`flex-1 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'user'
-                  ? 'bg-primary text-black shadow-md'
-                  : 'text-zinc-400 hover:text-primary'
-              }`}
-            >
-              <i className="fa-solid fa-user text-xs"></i>
-              <span>User Sign In</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setActiveTab('admin'); setUnverifiedEmail(null); setShowPassword(false); }}
-              className={`flex-1 py-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                activeTab === 'admin'
-                  ? 'bg-primary text-black shadow-md'
-                  : 'text-zinc-400 hover:text-primary'
-              }`}
-            >
-              <i className="fa-solid fa-shield-halved text-xs"></i>
-              <span>Admin Sign In</span>
-            </button>
-          </div>
+        </div>
+      </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Field */}
-            <div>
-              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                Email Address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                  <i className="fa-regular fa-envelope"></i>
-                </div>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder={activeTab === 'admin' ? 'admin@imovies.com' : 'user@example.com'}
-                  className={`w-full pl-10 pr-4 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                    isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                  }`}
-                />
-              </div>
+      {/* OTP Verification Modal */}
+      {showOtpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative text-center">
+            <button
+              onClick={() => setShowOtpModal(false)}
+              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-white hover:bg-[#18181f] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 mb-4">
+              <KeyRound className="w-7 h-7" />
             </div>
 
-            {/* Password Field */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                  Password
+            <h3 className="text-xl font-bold text-white">Enter Verification OTP</h3>
+            <p className="text-xs text-[#a1a1aa] mt-1">
+              Enter the 6-digit code sent to:
+            </p>
+            <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#ff6600]">
+              {unverifiedEmail || email}
+            </div>
+
+            <form onSubmit={handleVerifyLoginOtp} className="space-y-4 mt-6 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider text-center mb-2">
+                  6-Digit OTP Code
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setForgotEmail(formData.email || '');
-                    setShowForgotModal(true);
-                  }}
-                  className="text-xs text-primary hover:underline font-semibold cursor-pointer"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                  <i className="fa-solid fa-lock"></i>
-                </div>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
                   required
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`w-full pl-10 pr-10 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                    isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                  }`}
+                  autoFocus
+                  value={loginOtp}
+                  onChange={(e) => setLoginOtp(e.target.value.replace(/\D/g, ""))}
+                  placeholder="• • • • • •"
+                  className="w-full bg-[#09090b] border-2 border-[#ff6600]/50 focus:border-[#ff6600] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
                 />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  title={showPassword ? 'Hide password' : 'Show password'}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer focus:outline-none"
+                  onClick={() => setShowOtpModal(false)}
+                  className="flex-1 py-3 px-4 rounded-xl font-bold text-sm text-slate-300 bg-[#18181f] hover:bg-[#3f3f46] transition-colors"
                 >
-                  <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={loginOtpLoading || loginOtp.length !== 6}
+                  className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all disabled:opacity-50"
+                >
+                  {loginOtpLoading ? "Verifying..." : "Verify & Sign In"}
                 </button>
               </div>
+            </form>
+
+            <div className="mt-4 pt-3 border-t border-[#27272a]">
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendingVerification}
+                className="text-xs text-[#a1a1aa] hover:text-[#ff6600] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+              >
+                <Send className="w-3 h-3 text-[#ff6600]" />
+                <span>{resendingVerification ? "Sending fresh OTP..." : "Resend OTP Code"}</span>
+              </button>
             </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-2 py-3 bg-primary hover:bg-orange-600 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-950/40 transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                  <span>Signing In...</span>
-                </>
-              ) : (
-                <>
-                  <i className="fa-solid fa-right-to-bracket"></i>
-                  <span>Sign In as {activeTab === 'admin' ? 'Administrator' : 'User'}</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* Conditional Footer: ONLY show registration link for users */}
-          <div className="mt-6 text-center text-sm text-zinc-400 pt-4 border-t border-zinc-800">
-            {activeTab === 'user' ? (
-              <div className="text-xs">
-                Don't have an account?{' '}
-                <Link to="/register" className="text-primary hover:underline font-bold ml-1">
-                  Create an account
-                </Link>
-              </div>
-            ) : (
-              <div className="p-2.5 bg-black/20 border border-zinc-800 text-xs text-zinc-400 flex items-center justify-center gap-2">
-                <i className="fa-solid fa-shield-halved text-primary"></i>
-                <span>Admin accounts must be provisioned internally by authorized administrators.</span>
-              </div>
-            )}
           </div>
         </div>
+      )}
 
-        {/* ── FORGOT PASSWORD MODAL ── */}
-        {showForgotModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-            <div
-              className="w-full max-w-md border rounded-none p-6 sm:p-8 relative shadow-2xl transition-colors"
-              style={{ backgroundColor: isDark ? '#121216' : '#ffffff' }}
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-5 right-5 p-1 rounded-full text-slate-400 hover:text-white hover:bg-[#18181f] transition-colors"
             >
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-4">
-                <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                  <i className="fa-solid fa-key text-primary"></i>
-                  <span>Reset Password</span>
-                </h3>
-                <button
-                  onClick={() => { setShowForgotModal(false); setForgotSuccess(false); }}
-                  className="text-zinc-400 hover:text-primary transition text-lg"
-                >
-                  <i className="fa-solid fa-xmark"></i>
-                </button>
-              </div>
+              <X className="w-5 h-5" />
+            </button>
 
-              {forgotSuccess ? (
-                /* Success State inside Modal */
-                <div className="text-center py-4 space-y-3">
-                  <div className="w-14 h-14 bg-primary/20 border border-primary/40 text-primary flex items-center justify-center mx-auto text-2xl shadow-md">
-                    <i className="fa-solid fa-envelope-circle-check"></i>
-                  </div>
-                  <h4 className="text-lg font-black uppercase tracking-tight text-white">
-                    Password Reset Link Sent
-                  </h4>
-                  <p className="text-xs text-zinc-300">
-                    We've dispatched a secure password recovery link to <strong>{forgotEmail}</strong>.
-                  </p>
-                  <p className="text-zinc-500 text-xs flex items-center justify-center gap-1.5 pt-1">
-                    <i className="fa-regular fa-envelope text-primary text-[11px]"></i>
-                    <span>Didn't receive the email? Please check your spam or junk folder.</span>
-                  </p>
+            {forgotSuccess ? (
+              <div className="text-center py-4 space-y-4">
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-white">Reset Email Dispatched!</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  We've sent a secure password reset link to <strong>{forgotEmail}</strong>. Please check your inbox and click the link to choose a new password.
+                </p>
+                <div className="pt-2">
                   <button
-                    type="button"
-                    onClick={() => { setShowForgotModal(false); setForgotSuccess(false); setForgotEmail(''); }}
-                    className="mt-4 px-6 py-2.5 bg-primary hover:bg-[#ff7700] text-black font-black text-xs uppercase tracking-wider transition shadow-md"
+                    onClick={() => setShowForgotModal(false)}
+                    className="w-full py-3 rounded-xl bg-[#18181f] hover:bg-[#3f3f46] text-white font-bold text-sm transition-colors"
                   >
-                    Close Window
+                    Back to Sign In
                   </button>
                 </div>
-              ) : (
-                <>
-                  <p className="text-xs text-zinc-400 mb-1">
-                    Enter your registered {activeTab === 'admin' ? 'Admin' : 'User'} email address. We'll send a secure password recovery link via Brevo.
-                  </p>
-                  <p className="text-zinc-500 text-xs mb-4 flex items-center gap-1.5">
-                    <i className="fa-regular fa-envelope text-primary text-[11px]"></i>
-                    <span>Didn't receive the email? Please check your spam or junk folder.</span>
-                  </p>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2.5 rounded-xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Reset Your Password</h3>
+                    <p className="text-xs text-[#a1a1aa]">Enter your registered email to receive a recovery link</p>
+                  </div>
+                </div>
 
-                  <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                        Account Email Address
-                      </label>
+                <form onSubmit={handleForgotPassword} className="space-y-4 mt-6">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                      Account Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
                         type="email"
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         placeholder="you@example.com"
-                        className={`w-full px-4 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                          isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                        }`}
+                        className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
                       />
                     </div>
+                  </div>
 
-                    <div className="flex items-center justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => { setShowForgotModal(false); setForgotSuccess(false); }}
-                        className="px-4 py-2 border border-zinc-700 text-xs font-bold uppercase tracking-wider hover:bg-zinc-800 transition"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={forgotLoading}
-                        className="px-5 py-2 bg-primary hover:bg-[#ff7700] text-black font-black text-xs uppercase tracking-wider transition disabled:opacity-50 flex items-center gap-1.5"
-                      >
-                        {forgotLoading ? (
-                          <>
-                            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                            <span>Sending...</span>
-                          </>
-                        ) : (
-                          <>
-                            <i className="fa-solid fa-paper-plane text-[11px]"></i>
-                            <span>Send Reset Link</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                </>
-              )}
-            </div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(false)}
+                      className="flex-1 py-3 px-4 rounded-xl font-bold text-sm text-slate-300 bg-[#18181f] hover:bg-[#3f3f46] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={forgotLoading}
+                      className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all disabled:opacity-50"
+                    >
+                      {forgotLoading ? "Sending Link..." : "Send Reset Link"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
           </div>
-        )}
-      </main>
-
-      <Footer />
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default Login;

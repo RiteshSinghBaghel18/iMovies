@@ -1,32 +1,58 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const theatreSchema = new mongoose.Schema({
-  theatreName: { type: String, required: true },
-  theatreId: { type: String, required: true, unique: true },
-  location: { type: String, required: true },
-  adminEmail: { type: String, required: true },
-  balconySeatPrice: { type: Number, required: true, default: 250 },
-  middleSeatPrice: { type: Number, required: true, default: 180 },
-  lowerSeatPrice: { type: Number, required: true, default: 120 },
-  balconySeats: {
-    rows: { type: Number, required: true, default: 3 },
-    cols: { type: Number, required: true, default: 10 }
+const theatreSchema = new mongoose.Schema(
+  {
+    theatreName: {
+      type: String,
+      required: [true, "Theatre name is required"],
+      trim: true,
+    },
+    theatreId: {
+      type: String,
+      required: [true, "Theatre ID is required"],
+      unique: true,
+      trim: true,
+    },
+    location: {
+      type: String,
+      required: [true, "Location is required"],
+      trim: true,
+    },
+    balconySeatPrice: {
+      type: Number,
+      required: [true, "Balcony seat price is required"],
+      min: [0, "Price must be non-negative"],
+    },
+    middleSeatPrice: {
+      type: Number,
+      required: [true, "Middle seat price is required"],
+      min: [0, "Price must be non-negative"],
+    },
+    lowerSeatPrice: {
+      type: Number,
+      required: [true, "Lower seat price is required"],
+      min: [0, "Price must be non-negative"],
+    },
+    balconySeats: {
+      type: mongoose.Schema.Types.Mixed,
+      required: [true, "Balcony seats configuration is required"],
+    },
+    middleSeats: {
+      type: mongoose.Schema.Types.Mixed,
+      required: [true, "Middle seats configuration is required"],
+    },
+    lowerSeats: {
+      type: mongoose.Schema.Types.Mixed,
+      required: [true, "Lower seats configuration is required"],
+    },
+    amenities: {
+      type: [String],
+      default: ["4K Projection", "Dolby Atmos 7.1", "Recliner Seats", "Parking"],
+    },
   },
-  middleSeats: {
-    rows: { type: Number, required: true, default: 5 },
-    cols: { type: Number, required: true, default: 12 }
-  },
-  lowerSeats: {
-    rows: { type: Number, required: true, default: 4 },
-    cols: { type: Number, required: true, default: 10 }
-  },
-  balconyRows: { type: Number, default: 3 },
-  balconyCols: { type: Number, default: 10 },
-  middleRows: { type: Number, default: 5 },
-  middleCols: { type: Number, default: 12 },
-  lowerRows: { type: Number, default: 4 },
-  lowerCols: { type: Number, default: 10 },
-  totalSeats: { type: Number, default: 130 }
-}, { timestamps: true });
+  {
+    timestamps: true,
+  }
+);
 
-module.exports = mongoose.model('Theatre', theatreSchema);
+module.exports = mongoose.model("Theatre", theatreSchema);

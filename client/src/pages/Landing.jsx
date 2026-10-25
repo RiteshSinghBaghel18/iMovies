@@ -1,278 +1,215 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { useTheme } from '../utils/ThemeContext';
+import React from "react";
+import { Link } from "react-router-dom";
+import { 
+  Film, 
+  Sparkles, 
+  Ticket, 
+  Clock, 
+  ShieldCheck, 
+  Tv, 
+  Flame, 
+  ArrowRight,
+  Star
+} from "lucide-react";
+import useFetch from "../hooks/useFetch";
 
-const FEATURE_CARDS = [
-  {
-    icon: '🎬',
-    color: 'orange',
-    title: 'Latest Blockbusters',
-    desc: 'Explore a rich library of cinema releases, filtered by genre, language, and rating.',
-  },
-  {
-    icon: '🎭',
-    color: 'orange',
-    title: 'Real-Time Seat Map',
-    desc: 'Live interactive seat layout with instant locks powered by WebSocket technology.',
-  },
-  {
-    icon: '🎟️',
-    color: 'orange',
-    title: 'Instant Booking',
-    desc: 'Seamless one-click confirmation with transparent Balcony, Middle, and Lower pricing.',
-  },
-  {
-    icon: '📧',
-    color: 'orange',
-    title: 'Digital Tickets',
-    desc: 'Printable cinema passes with perforated design, booking history, and cancellation.',
-  },
-];
-
-function Landing() {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
-
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), 80);
-    return () => clearTimeout(t);
-  }, []);
+const Landing = () => {
+  const { data } = useFetch("/movie");
+  const trendingMovies = data?.movies?.slice(0, 4) || [];
 
   return (
-    <div className={`min-h-screen flex flex-col selection:bg-primary selection:text-black ${
-      isDark ? 'bg-[#0a0a0f] text-white' : 'bg-slate-50 text-gray-900'
-    }`}>
-      <Header />
+    <div className="min-h-screen bg-[#000000] text-slate-100 flex flex-col">
+      
+      {/* Hero Visual Section - Amazon Prime Replica */}
+      <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-[#27272a]/60">
+        
+        {/* Dynamic Backdrop Background with Vignette */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1920&q=80"
+            alt="Cinema Hero Backdrop"
+            className="w-full h-full object-cover opacity-25 scale-105 filter blur-[1px]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/70 to-[#000000]" />
+          {/* Prime Cyan Ambient Glow */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] h-[320px] bg-[#ff6600]/15 rounded-full blur-[140px] pointer-events-none" />
+        </div>
 
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes floatSlow {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50%       { transform: translateY(-18px) rotate(6deg); }
-        }
-        @keyframes pulseGlow {
-          0%, 100% { opacity: 0.25; transform: scale(1); }
-          50%       { opacity: 0.55; transform: scale(1.1); }
-        }
-        @keyframes shimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        .fade-up-1 { animation: fadeUp 0.7s ease both; animation-delay: 0.1s; }
-        .fade-up-2 { animation: fadeUp 0.7s ease both; animation-delay: 0.25s; }
-        .fade-up-3 { animation: fadeUp 0.7s ease both; animation-delay: 0.4s; }
-        .fade-up-4 { animation: fadeUp 0.7s ease both; animation-delay: 0.55s; }
-        .float-reel { animation: floatSlow 9s ease-in-out infinite; }
-        .glow-pulse { animation: pulseGlow 5s ease-in-out infinite; }
-        .shimmer-text {
-          background: linear-gradient(90deg, #ff6600 0%, #ffa333 40%, #ff6600 60%, #ff7700 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shimmer 3s linear infinite;
-        }
-      `}</style>
-
-      {/* ── HERO SECTION ──────────────────────────────────────── */}
-      <section
-        className={`relative flex-1 flex flex-col items-center justify-center text-center overflow-hidden py-24 px-4 sm:px-6 lg:px-8 ${
-          isDark
-            ? 'bg-[radial-gradient(ellipse_at_top,#1a0f05_0%,#000000_60%)]'
-            : 'bg-[radial-gradient(ellipse_at_top,#fff7ed_0%,#ffffff_60%)]'
-        }`}
-        style={{ opacity: visible ? 1 : 0, transition: 'opacity 0.5s ease' }}
-      >
-        {/* Ambient Glows */}
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-[160px] pointer-events-none glow-pulse bg-primary/20" />
-        <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full blur-[160px] pointer-events-none glow-pulse bg-primary/15" style={{ animationDelay: '2.5s' }} />
-
-        {/* Floating Decorations (hidden on mobile) */}
-        <div className="absolute top-16 left-12 text-7xl opacity-[0.08] float-reel pointer-events-none hidden lg:block select-none">🎞️</div>
-        <div className="absolute bottom-24 right-16 text-8xl opacity-[0.07] float-reel pointer-events-none hidden lg:block select-none" style={{ animationDelay: '3s' }}>📽️</div>
-        <div className="absolute top-1/3 right-12 text-6xl opacity-[0.08] float-reel pointer-events-none hidden lg:block select-none" style={{ animationDelay: '1.5s' }}>🍿</div>
-        <div className="absolute bottom-1/3 left-20 text-5xl opacity-[0.06] float-reel pointer-events-none hidden xl:block select-none" style={{ animationDelay: '4s' }}>⭐</div>
-
-        {/* Content */}
-        <div className="relative z-10 max-w-5xl mx-auto">
-          {/* Live badge */}
-          <div className="fade-up-1 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold tracking-widest uppercase mb-8 shadow-inner border bg-primary/20 border-primary/40 text-primary">
-            <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-            Next-Generation Cinema Experience
+        {/* Hero Content */}
+        <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+          
+          {/* Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#ff6600]/15 border border-[#ff6600]/30 text-[#ff6600] text-xs font-bold tracking-wide uppercase mb-6 animate-pulse">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Next-Gen Cinema & Box Office</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="fade-up-2 text-5xl sm:text-7xl lg:text-[88px] font-black tracking-tight leading-none mb-6">
-            <span className={`block mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Welcome to
-            </span>
-            <span className="shimmer-text">iMovies</span>
+          {/* Main Title */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-white leading-tight sm:leading-tight">
+            Welcome to <span className="text-[#ff6600]">iMovies</span>
           </h1>
 
-          {/* Subheadline */}
-          <p className={`fade-up-3 text-lg sm:text-2xl font-light max-w-2xl mx-auto mb-10 leading-relaxed ${
-            isDark ? 'text-gray-300' : 'text-gray-600'
-          }`}>
-            Your ultimate destination for the latest blockbusters, timeless classics, and{' '}
-            <span className="font-semibold text-primary">real-time interactive seat booking</span>.
+          {/* Description specified in requirements */}
+          <p className="mt-6 text-lg sm:text-xl text-[#a1a1aa] max-w-3xl mx-auto font-normal leading-relaxed">
+            Your ultimate destination for the latest blockbusters and timeless classics. Real-time seat locking, instant digital passes, and IMAX luxury at your fingertips.
           </p>
 
-          {/* CTAs */}
-          <div className="fade-up-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Action CTAs */}
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              to="/home"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-base shadow-xl shadow-[#ff6600]/30 hover:scale-105 transition-all flex items-center justify-center gap-2"
+            >
+              <Ticket className="w-5 h-5" />
+              <span>Explore Now Showing</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
             <Link
               to="/login"
-              className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-primary hover:bg-orange-500 text-black font-black text-lg shadow-2xl shadow-orange-950/60 transform hover:-translate-y-1 transition duration-200 flex items-center justify-center gap-3"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-[#18181f] hover:bg-[#3f3f46] text-slate-200 border border-[#27272a] hover:border-[#ff6600]/50 font-bold text-base transition-all flex items-center justify-center gap-2"
             >
-              <i className="fa-solid fa-right-to-bracket"></i>
-              <span>Sign In Now</span>
-            </Link>
-            <Link
-              to="/register"
-              className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold text-lg transform hover:-translate-y-1 transition duration-200 flex items-center justify-center gap-3 border ${
-                isDark
-                  ? 'bg-white/5 hover:bg-white/10 text-white border-white/20 hover:border-white/40'
-                  : 'bg-white hover:bg-gray-50 text-gray-800 border-gray-300 hover:border-gray-400 shadow-md'
-              }`}
-            >
-              <i className="fa-solid fa-user-plus text-primary"></i>
-              <span>Create Account</span>
+              <span>Sign In to Account</span>
             </Link>
           </div>
 
-          {/* Quick trust badges */}
-          <div className={`mt-14 pt-8 border-t flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-sm ${
-            isDark ? 'border-gray-800/60 text-gray-400' : 'border-gray-200 text-gray-500'
-          }`}>
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-bolt text-primary"></i>
-              <span>Instant Seat Locking</span>
+          {/* Quick Metrics */}
+          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-6 pt-10 border-t border-[#27272a] max-w-2xl mx-auto">
+            <div>
+              <p className="text-2xl sm:text-3xl font-extrabold text-white">100%</p>
+              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">Live Seat Sync</p>
             </div>
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-shield-halved text-primary"></i>
-              <span>Zero Booking Fees</span>
+            <div>
+              <p className="text-2xl sm:text-3xl font-extrabold text-[#ff6600]">10 Min</p>
+              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">TTL Seat Lock</p>
             </div>
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-qrcode text-primary"></i>
-              <span>Instant E-Tickets</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <i className="fa-solid fa-clock-rotate-left text-primary"></i>
-              <span>Cancel Anytime</span>
+            <div>
+              <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400">Instant</p>
+              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">QR E-Tickets</p>
             </div>
           </div>
+
         </div>
       </section>
 
-      {/* ── FEATURE HIGHLIGHTS ────────────────────────────────── */}
-      <section className={`py-20 px-4 sm:px-6 lg:px-8 ${isDark ? 'bg-[#070710]' : 'bg-gray-50'}`}>
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-14">
-            <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4">
-              Why Moviegoers Choose{' '}
-              <span className="text-primary">iMovies</span>
+      {/* Featured Blockbusters Showcase */}
+      {trendingMovies.length > 0 && (
+        <section className="py-20 bg-[#000000] border-b border-[#27272a]/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+              <div>
+                <div className="flex items-center gap-2 text-[#ff6600] font-bold text-xs uppercase tracking-widest mb-2">
+                  <Flame className="w-4 h-4" />
+                  <span>Trending Highlights</span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+                  Now Captivating Audiences
+                </h2>
+              </div>
+              <Link
+                to="/home"
+                className="mt-4 md:mt-0 text-sm font-semibold text-[#ff6600] hover:text-[#ff7700] flex items-center gap-1.5 transition-colors"
+              >
+                <span>View all titles</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {trendingMovies.map((movie) => (
+                <Link
+                  key={movie._id}
+                  to={`/moviedetails/${movie._id}`}
+                  className="group bg-[#121216] rounded-xl overflow-hidden border border-[#27272a] hover:border-[#ff6600]/70 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-[#ff6600]/10 flex flex-col"
+                >
+                  <div className="relative aspect-[2/3] overflow-hidden bg-[#18181f]">
+                    <img
+                      src={movie.posterUrl}
+                      alt={movie.movieName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/75 backdrop-blur-md text-[#f59e0b] text-xs font-bold flex items-center gap-1 border border-[#f59e0b]/20">
+                      <Star className="w-3.5 h-3.5 fill-[#f59e0b] text-[#f59e0b]" />
+                      <span>{movie.rating}</span>
+                    </div>
+                    <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded bg-[#18181f] text-white text-[10px] font-bold uppercase tracking-wider border border-[#27272a]">
+                      {movie.certification || "U/A"}
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-bold text-base text-white group-hover:text-[#ff6600] transition-colors line-clamp-1">
+                        {movie.movieName}
+                      </h3>
+                      <p className="text-xs text-[#a1a1aa] mt-1 line-clamp-1">
+                        {movie.genres?.join(", ")} • {movie.duration}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-[#27272a] flex items-center justify-between text-xs">
+                      <span className="text-[#a1a1aa]">{movie.language}</span>
+                      <span className="text-[#ff6600] font-bold group-hover:translate-x-1 transition-transform">
+                        Book Now →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Why Choose iMovies Highlights */}
+      <section className="py-20 bg-gradient-to-b from-[#000000] to-[#09090b]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <h2 className="text-3xl font-extrabold text-white">
+              Engineered For Movie Lovers
             </h2>
-            <p className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              Built with cutting-edge real-time technology to give you the front-row cinema
-              experience before you even arrive.
+            <p className="text-[#a1a1aa] mt-3 text-sm">
+              We took everything frustrating about movie ticketing and made it effortless.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {FEATURE_CARDS.map((f, i) => {
-              return (
-                <div
-                  key={i}
-                  className={`p-6 rounded-2xl border transition duration-300 group hover:-translate-y-1.5 hover:border-primary/50 ${
-                    isDark ? 'bg-[#121216] border-zinc-800' : 'bg-white border-zinc-200 shadow-sm'
-                  }`}
-                >
-                  <div className="w-14 h-14 rounded-xl border border-primary/30 bg-primary/10 text-primary text-3xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                    {f.icon}
-                  </div>
-                  <h3 className={`text-lg font-bold mb-2 transition-colors group-hover:text-primary ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {f.title}
-                  </h3>
-                  <p className={`text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                    {f.desc}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ──────────────────────────────────────── */}
-      <section className={`py-20 px-4 sm:px-6 lg:px-8 ${isDark ? 'bg-[#0a0a0f]' : 'bg-white'}`}>
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 text-white">
-            Book in <span className="text-primary">3 Simple Steps</span>
-          </h2>
-          <p className={`text-base mb-14 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            From browsing to your digital ticket — all under 2 minutes.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            {[
-              { step: '01', icon: '🎬', title: 'Browse & Discover', desc: 'Explore movies by genre, language, or search. Read cast details and user reviews.' },
-              { step: '02', icon: '💺', title: 'Pick Your Seat', desc: 'Choose from Balcony, Middle, or Lower tiers. Seats lock instantly for 10 minutes.' },
-              { step: '03', icon: '🎟️', title: 'Confirm & Enjoy', desc: 'Instant booking confirmation. Your digital ticket is ready to show at the cinema.' },
-            ].map((s, i) => (
-              <div
-                key={i}
-                className={`p-6 rounded-2xl border relative overflow-hidden ${
-                  isDark ? 'bg-[#111827] border-gray-800' : 'bg-gray-50 border-gray-200'
-                }`}
-              >
-                <span className={`absolute top-4 right-4 text-6xl font-black opacity-5 ${isDark ? 'text-white' : 'text-gray-400'}`}>
-                  {s.step}
-                </span>
-                <div className="text-3xl mb-4">{s.icon}</div>
-                <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{s.title}</h3>
-                <p className={`text-sm leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{s.desc}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-[#121216] border border-[#27272a] hover:border-[#ff6600]/40 transition-all">
+              <div className="w-12 h-12 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center mb-6 border border-[#ff6600]/30">
+                <Clock className="w-6 h-6" />
               </div>
-            ))}
+              <h3 className="text-lg font-bold text-white mb-2">Live Seat Locking</h3>
+              <p className="text-sm text-[#a1a1aa] leading-relaxed">
+                Pick your seats with zero rush. Seats are automatically locked for 10 minutes via our real-time WebSocket TTL engine.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-[#121216] border border-[#27272a] hover:border-[#ff6600]/40 transition-all">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center mb-6 border border-amber-500/30">
+                <Tv className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">IMAX & Tier Seating</h3>
+              <p className="text-sm text-[#a1a1aa] leading-relaxed">
+                Choose between VIP Balcony, Premium Middle, and Standard Lower rows with crystal-clear interactive seating maps.
+              </p>
+            </div>
+
+            <div className="p-8 rounded-2xl bg-[#121216] border border-[#27272a] hover:border-[#ff6600]/40 transition-all">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mb-6 border border-emerald-500/30">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">Digital Pass & Alerts</h3>
+              <p className="text-sm text-[#a1a1aa] leading-relaxed">
+                Instant QR e-tickets and automated showtime email reminders so you never miss the opening trailers.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── CTA BANNER ────────────────────────────────────────── */}
-      <section className={`py-16 text-center px-4 border-y ${
-        isDark ? 'bg-[#0a0a0a] border-zinc-800' : 'bg-white border-zinc-200'
-      }`}>
-        <h3 className={`text-2xl sm:text-3xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Ready for your next movie night? 🍿
-        </h3>
-        <p className={`max-w-xl mx-auto mb-8 text-sm sm:text-base ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-          Join thousands of movie lovers booking their favourite seats in advance with zero hassle.
-        </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Link
-            to="/register"
-            className="px-8 py-3.5 rounded-xl bg-primary hover:bg-orange-500 text-black font-black transition shadow-lg shadow-orange-950/40"
-          >
-            Get Started — It's Free
-          </Link>
-          <Link
-            to="/login"
-            className={`px-8 py-3.5 rounded-xl font-bold border transition ${
-              isDark
-                ? 'text-gray-200 border-gray-600 hover:border-gray-400 hover:text-white'
-                : 'text-gray-700 border-gray-300 hover:border-gray-500 hover:text-gray-900 bg-white'
-            }`}
-          >
-            Already have an account?
-          </Link>
-        </div>
-      </section>
-
-      <Footer />
     </div>
   );
-}
+};
 
 export default Landing;

@@ -1,609 +1,361 @@
-const axios = require('axios');
-const Movie = require('../models/movieModel');
+/**
+ * TMDB Service — server/services/tmdbService.js
+ *
+ * Fetches live movie data from The Movie Database (TMDb) API v3 and
+ * upserts the results into the local MongoDB `movies` collection so that
+ * the entire iMovies booking pipeline (Shows → Bookings → Seats) keeps
+ * working with stable Mongoose _id references.
+ *
+ * Key TMDB endpoints used:
+ *  • /movie/now_playing  – theatrically released, paginated
+ *  • /movie/popular      – global trending / popular titles
+ *  • /movie/{id}         – full movie details (runtime, genres, cast, etc.)
+ *  • /movie/{id}/credits – cast & director
+ *  • /movie/{id}/videos  – YouTube trailers
+ *
+ * Environment variables required (server/.env):
+ *   TMDB_API_KEY  – your v3 API key
+ *   TMDB_BASE_URL – https://api.themoviedb.org/3   (default)
+ *   TMDB_IMAGE_BASE – https://image.tmdb.org/t/p  (default)
+ */
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
-const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
-const TMDB_BACKDROP_BASE = 'https://image.tmdb.org/t/p/original';
+const axios = require("axios");
+const Movie = require("../models/movieModel");
 
-const TMDB_HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json'
-};
+const TMDB_BASE_URL = process.env.TMDB_BASE_URL || "https://api.themoviedb.org/3";
+const TMDB_API_KEY  = process.env.TMDB_API_KEY;
+const IMAGE_BASE    = process.env.TMDB_IMAGE_BASE || "https://image.tmdb.org/t/p";
 
-const getApiKey = () => {
-  return process.env.TMDB_API_KEY || 'd1e52c6b5d20f8ab492da5af4e09625e';
-};
+// Poster sizes:  w500 | original
+// Backdrop sizes: w1280 | original
+const POSTER_SIZE   = "w500";
+const BACKDROP_SIZE = "w1280";
+const ORIGINAL_SIZE = "original";
 
-// Create configured axios client with proper headers
-const tmdbClient = axios.create({
+if (!TMDB_API_KEY) {
+  console.warn("[TMDb] ⚠️  TMDB_API_KEY is not set in .env. Live sync will be skipped.");
+}
+
+/**
+ * Build a reusable Axios instance with the API key always attached.
+ */
+const tmdb = axios.create({
   baseURL: TMDB_BASE_URL,
-  timeout: 10000,
-  adapter: 'fetch',
-  headers: TMDB_HEADERS
+  params: { api_key: TMDB_API_KEY },
+  timeout: 20_000,
 });
 
+// ---------------------------------------------------------------------------
+// Genre ID → human-readable name mapping (TMDb v3 movie genre IDs)
+// ---------------------------------------------------------------------------
+const GENRE_MAP = {
+  28:    "Action",
+  12:    "Adventure",
+  16:    "Animation",
+  35:    "Comedy",
+  80:    "Crime",
+  99:    "Documentary",
+  18:    "Drama",
+  10751: "Family",
+  14:    "Fantasy",
+  36:    "History",
+  27:    "Horror",
+  10402: "Music",
+  9648:  "Mystery",
+  10749: "Romance",
+  878:   "Sci-Fi",
+  10770: "TV Movie",
+  53:    "Thriller",
+  10752: "War",
+  37:    "Western",
+  10759: "Action & Adventure",
+  10762: "Kids",
+  10763: "News",
+  10764: "Reality",
+  10765: "Sci-Fi & Fantasy",
+  10766: "Soap",
+  10767: "Talk",
+  10768: "War & Politics",
+};
+
 /**
- * Robust request helper with automatic exponential retry
+ * Map a TMDb adult flag + certification to an MPAA / Indian CBFC label.
  */
-const tmdbRequest = async (path, params = {}, retries = 4) => {
-  let lastError = null;
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const res = await tmdbClient.get(path, {
-        params: { api_key: getApiKey(), ...params },
-        headers: TMDB_HEADERS
-      });
-      return res.data;
-    } catch (err) {
-      lastError = err;
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, 400 * attempt));
+const mapCertification = (adult, certification) => {
+  if (certification) return certification;
+  return adult ? "A" : "U/A";
+};
+
+/**
+ * Convert a TMDb runtime (minutes) to a human-readable string, e.g. "2h 28m".
+ */
+const formatDuration = (minutes) => {
+  if (!minutes) return "N/A";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
+// ---------------------------------------------------------------------------
+// Fetch helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch full detail + credits + videos for a single TMDb movie.
+ * Returns null on error so the batch can continue.
+ */
+const fetchMovieDetail = async (tmdbId) => {
+  try {
+    const [detailRes, creditsRes, videosRes] = await Promise.all([
+      tmdb.get(`/movie/${tmdbId}`, {
+        params: { append_to_response: "release_dates" },
+      }),
+      tmdb.get(`/movie/${tmdbId}/credits`),
+      tmdb.get(`/movie/${tmdbId}/videos`),
+    ]);
+
+    const d = detailRes.data;
+    const credits = creditsRes.data;
+    const videos  = videosRes.data;
+
+    // Extract top-5 cast names
+    const cast = credits.cast
+      ?.slice(0, 5)
+      .map((c) => c.name)
+      .filter(Boolean) || [];
+
+    // Extract director
+    const director =
+      credits.crew?.find((c) => c.job === "Director")?.name || "Unknown";
+
+    // Extract first YouTube trailer key
+    const trailer = videos.results?.find(
+      (v) => v.site === "YouTube" && v.type === "Trailer"
+    );
+    const trailerUrl = trailer
+      ? `https://www.youtube.com/watch?v=${trailer.key}`
+      : null;
+
+    // Extract US or GB certification
+    let certification = null;
+    const usRelease = d.release_dates?.results?.find((r) => r.iso_3166_1 === "US");
+    if (usRelease?.release_dates?.length) {
+      certification = usRelease.release_dates.find((rd) => rd.certification)?.certification;
+    }
+    if (!certification) {
+      const gbRelease = d.release_dates?.results?.find((r) => r.iso_3166_1 === "GB");
+      if (gbRelease?.release_dates?.length) {
+        certification = gbRelease.release_dates.find((rd) => rd.certification)?.certification;
       }
     }
-  }
-  throw lastError;
-};
 
-// In-memory genre mapping cache
-let genreCache = null;
+    // Resolve genres: use embedded genre objects or fall back to genre_ids mapping
+    const genreNames =
+      d.genres?.length
+        ? d.genres.map((g) => g.name)
+        : d.genre_ids?.map((id) => GENRE_MAP[id]).filter(Boolean) || ["General"];
 
-const ISO_LANG_MAP = {
-  en: 'English',
-  es: 'Spanish',
-  fr: 'French',
-  ko: 'Korean',
-  ja: 'Japanese',
-  zh: 'Chinese',
-  de: 'German',
-  it: 'Italian',
-  ru: 'Russian',
-  pt: 'Portuguese',
-  ar: 'Arabic',
-  tr: 'Turkish'
-};
+    // Original language label — normalize non-English to readable label
+    const langMap = {
+      en: "English", hi: "Hindi", fr: "French", es: "Spanish",
+      de: "German", ja: "Japanese", ko: "Korean", zh: "Chinese",
+      ta: "Tamil", te: "Telugu", ml: "Malayalam", pa: "Punjabi",
+      pt: "Portuguese", it: "Italian", ru: "Russian", ar: "Arabic",
+      th: "Thai", tr: "Turkish", nl: "Dutch", sv: "Swedish",
+    };
+    const language = langMap[d.original_language] ||
+      (d.original_language ? d.original_language.toUpperCase() : "English");
 
-const EXCLUDED_LANG_CODES = ['hi', 'ta', 'te', 'ml', 'kn', 'pa', 'mr', 'gu', 'bn'];
-const EXCLUDED_LANG_NAMES = [
-  'hindi', 'tamil', 'telugu', 'telgu', 'malayalam', 'kannada', 'punjabi', 'marathi', 'gujarati', 'bengali', 'indian'
-];
-
-/**
- * Filter out Indian / regional movies and movies without valid posters
- */
-const isExcludedMovie = (tmdbMovie) => {
-  if (!tmdbMovie) return true;
-  // Must have a real poster - never allow movies without posters
-  if (!tmdbMovie.poster_path && !tmdbMovie.posterUrl) return true;
-
-  const lang = (tmdbMovie.original_language || tmdbMovie.language || '').toLowerCase();
-  if (EXCLUDED_LANG_CODES.includes(lang) || EXCLUDED_LANG_NAMES.includes(lang)) {
-    return true;
-  }
-
-  if (Array.isArray(tmdbMovie.origin_country) && tmdbMovie.origin_country.includes('IN')) {
-    return true;
-  }
-  if (Array.isArray(tmdbMovie.production_countries) && tmdbMovie.production_countries.some(c => c.iso_3166_1 === 'IN')) {
-    return true;
-  }
-
-  return false;
-};
-
-/**
- * Fetch and cache the TMDB genre list
- */
-const fetchGenreMap = async () => {
-  if (genreCache) return genreCache;
-  try {
-    const data = await tmdbRequest('/genre/movie/list');
-    const map = {};
-    if (data && data.genres) {
-      data.genres.forEach((g) => {
-        map[g.id] = g.name;
-      });
-    }
-    genreCache = map;
-    return map;
-  } catch (error) {
-    console.warn('[tmdbService] Error fetching genres, using fallback:', error.message);
-    return {};
-  }
-};
-
-/**
- * Format minutes into "Xh Ym" string
- */
-const formatRuntime = (minutes) => {
-  if (!minutes || typeof minutes !== 'number' || minutes <= 0) return '2h 15m';
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  if (hrs > 0 && mins > 0) return `${hrs}h ${mins}m`;
-  if (hrs > 0) return `${hrs}h`;
-  return `${mins}m`;
-};
-
-/**
- * Extract the best genuine YouTube trailer URL from TMDB videos array
- */
-const extractTrailerUrl = (videosList = [], movieTitle = '') => {
-  if (Array.isArray(videosList) && videosList.length > 0) {
-    const ytVideos = videosList.filter((v) => v.site === 'YouTube' && v.key);
-
-    // 1. Official Trailer
-    const officialTrailer = ytVideos.find(
-      (v) => v.type === 'Trailer' && (v.official === true || /official/i.test(v.name || ''))
-    );
-    if (officialTrailer && officialTrailer.key) {
-      return `https://www.youtube.com/watch?v=${officialTrailer.key}`;
-    }
-
-    // 2. Any Trailer
-    const anyTrailer = ytVideos.find((v) => v.type === 'Trailer');
-    if (anyTrailer && anyTrailer.key) {
-      return `https://www.youtube.com/watch?v=${anyTrailer.key}`;
-    }
-
-    // 3. Teaser
-    const teaser = ytVideos.find((v) => v.type === 'Teaser');
-    if (teaser && teaser.key) {
-      return `https://www.youtube.com/watch?v=${teaser.key}`;
-    }
-
-    // 4. Any YouTube video (Clip, Sneak Peek, Featurette)
-    if (ytVideos[0] && ytVideos[0].key) {
-      return `https://www.youtube.com/watch?v=${ytVideos[0].key}`;
-    }
-  }
-
-  // Fallback to real YouTube search for the movie's official trailer (never Rickroll!)
-  const query = movieTitle ? `${movieTitle} official trailer` : 'movie official trailer';
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
-};
-
-/**
- * Fetch movie videos directly from TMDB
- */
-const fetchMovieVideos = async (tmdbId) => {
-  if (!tmdbId) return [];
-  try {
-    const data = await tmdbRequest(`/movie/${tmdbId}/videos`, {
-      include_video_language: 'en,null'
-    });
-    if (data && Array.isArray(data.results) && data.results.length > 0) {
-      return data.results;
-    }
-    // Fallback: without language constraint
-    const allData = await tmdbRequest(`/movie/${tmdbId}/videos`);
-    return allData?.results || [];
+    return {
+      tmdbId: d.id,
+      movieName:   d.title || d.original_title || "Untitled",
+      description: d.overview || "No description available.",
+      genres:      genreNames.length ? genreNames : ["General"],
+      releaseDate: d.release_date ? new Date(d.release_date) : new Date(),
+      language,
+      duration:    formatDuration(d.runtime),
+      certification: mapCertification(d.adult, certification),
+      posterUrl:
+        d.poster_path
+          ? `${IMAGE_BASE}/${POSTER_SIZE}${d.poster_path}`
+          : "https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=800&q=80",
+      bannerUrl:
+        d.backdrop_path
+          ? `${IMAGE_BASE}/${BACKDROP_SIZE}${d.backdrop_path}`
+          : "https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1600&q=80",
+      trailerUrl:
+        trailerUrl ||
+        `https://www.youtube.com/results?search_query=${encodeURIComponent((d.title || "") + " trailer")}`,
+      cast,
+      director,
+      rating:    d.vote_average ? parseFloat(d.vote_average.toFixed(1)) : 7.0,
+      voteCount: d.vote_count  || 0,
+      tmdbPopularity: d.popularity || 0,
+    };
   } catch (err) {
+    console.error(`[TMDb] Failed to fetch detail for id=${tmdbId}: ${err.message}`);
+    return null;
+  }
+};
+
+/**
+ * Fetch a page of movies from the given TMDB list endpoint
+ * (e.g. "/movie/now_playing", "/movie/popular", "/movie/top_rated").
+ */
+const fetchMovieList = async (endpoint, page = 1) => {
+  try {
+    const res = await tmdb.get(endpoint, {
+      params: { page, region: "US", language: "en-US" },
+    });
+    return res.data.results || [];
+  } catch (err) {
+    console.error(`[TMDb] fetchMovieList(${endpoint}, page=${page}) failed: ${err.message}`);
     return [];
   }
 };
 
-/**
- * Fetch trailer URL for a movie ID
- */
-const fetchMovieTrailerUrl = async (tmdbId, movieTitle) => {
-  const videos = await fetchMovieVideos(tmdbId);
-  return extractTrailerUrl(videos, movieTitle);
-};
+// ---------------------------------------------------------------------------
+// Core sync logic
+// ---------------------------------------------------------------------------
 
 /**
- * Format raw TMDB movie into standard iMovies schema format
+ * Upsert a single enriched TMDB movie document into MongoDB.
+ * Uses `tmdbId` as the unique dedup key.
  */
-const formatMovieData = (tmdbMovie, details = null, genreMap = {}, categoryTag = null) => {
-  if (isExcludedMovie(tmdbMovie)) {
-    return null;
-  }
-
-  const posterPath = tmdbMovie.poster_path || details?.poster_path;
-  if (!posterPath) {
-    return null; // Reject movies without valid posters
-  }
-
-  const movieTitle = (tmdbMovie.title || tmdbMovie.original_title || 'Untitled Movie').trim();
-
-  // Extract genres
-  let genres = [];
-  if (details && Array.isArray(details.genres) && details.genres.length > 0) {
-    genres = details.genres.map((g) => g.name);
-  } else if (Array.isArray(tmdbMovie.genre_ids) && tmdbMovie.genre_ids.length > 0) {
-    genres = tmdbMovie.genre_ids
-      .map((id) => genreMap[id])
-      .filter(Boolean);
-  }
-  if (!genres || genres.length === 0) {
-    genres = ['Action', 'Drama'];
-  }
-
-  // Language
-  const langCode = (tmdbMovie.original_language || 'en').toLowerCase();
-  const language = ISO_LANG_MAP[langCode] || langCode.toUpperCase();
-
-  // Duration
-  const runtimeMin = details?.runtime;
-  const duration = formatRuntime(runtimeMin);
-
-  // Posters & Backdrops (Authentic TMDB only, sanitized HTTPS)
-  let posterUrl = posterPath;
-  if (!posterUrl.startsWith('http://') && !posterUrl.startsWith('https://')) {
-    posterUrl = `${TMDB_IMAGE_BASE}${posterUrl.startsWith('/') ? posterUrl : `/${posterUrl}`}`;
-  }
-  let backdropUrl = tmdbMovie.backdrop_path || details?.backdrop_path;
-  if (backdropUrl && !backdropUrl.startsWith('http://') && !backdropUrl.startsWith('https://')) {
-    backdropUrl = `${TMDB_BACKDROP_BASE}${backdropUrl.startsWith('/') ? backdropUrl : `/${backdropUrl}`}`;
-  } else if (!backdropUrl) {
-    backdropUrl = posterUrl;
-  }
-
-  // Real Trailer URL extraction
-  let trailerUrl = '';
-  if (details && details.videos && Array.isArray(details.videos.results)) {
-    trailerUrl = extractTrailerUrl(details.videos.results, movieTitle);
-  } else if (tmdbMovie.videos && Array.isArray(tmdbMovie.videos.results)) {
-    trailerUrl = extractTrailerUrl(tmdbMovie.videos.results, movieTitle);
-  } else {
-    trailerUrl = extractTrailerUrl([], movieTitle);
-  }
-
-  // Cast members with TMDB w185 profile images
-  let cast = [];
-  if (details && details.credits && Array.isArray(details.credits.cast)) {
-    cast = details.credits.cast.slice(0, 12).map((c) => {
-      const profilePath = c.profile_path || '';
-      const profileUrl = profilePath
-        ? `https://image.tmdb.org/t/p/w185${profilePath.startsWith('/') ? profilePath : '/' + profilePath}`
-        : '';
-      return {
-        name: c.name || 'Actor',
-        role: c.character ? c.character.slice(0, 40) : (c.order === 0 ? 'Lead Actor' : 'Supporting'),
-        profilePath,
-        profileUrl,
-        image: profileUrl
-      };
-    });
-  }
-  if (cast.length === 0) {
-    cast = [
-      {
-        name: 'Lead Cast',
-        role: 'Protagonist',
-        profilePath: '',
-        profileUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=185&q=80',
-        image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=185&q=80'
-      },
-      {
-        name: 'Co-Star',
-        role: 'Supporting',
-        profilePath: '',
-        profileUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=185&q=80',
-        image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=185&q=80'
-      }
-    ];
-  }
-
-  // Description
-  let description = (tmdbMovie.overview || '').trim();
-  if (description.length < 10) {
-    description = `An exhilarating and cinematic theatrical experience featuring ${movieTitle}. Now showing in premier auditoriums worldwide.`;
-  }
-
-  // Release date
-  let releaseDate = tmdbMovie.release_date ? new Date(tmdbMovie.release_date) : new Date();
-  if (isNaN(releaseDate.getTime())) {
-    releaseDate = new Date();
-  }
-
-  // Certification rating
-  const rating = Number(tmdbMovie.vote_average) || 7.0;
-  let certification = 'U/A';
-  if (rating >= 8.0) certification = 'A';
-  else if (rating <= 6.0) certification = 'U';
-
-  return {
-    movieName: movieTitle,
-    description,
-    genres,
-    releaseDate,
-    language,
-    duration,
-    certification,
-    posterUrl,
-    backdropUrl,
-    trailerUrl,
-    cast,
-    tmdbId: tmdbMovie.id,
-    rating,
-    voteCount: tmdbMovie.vote_count || 0
-  };
-};
-
-/**
- * Fetch Now Playing movies from TMDB API
- */
-const getNowPlaying = async (page = 1) => {
-  return await tmdbRequest('/movie/now_playing', { page });
-};
-
-/**
- * Fetch Popular movies from TMDB API
- */
-const getPopular = async (page = 1) => {
-  return await tmdbRequest('/movie/popular', { page });
-};
-
-/**
- * Fetch Top Rated movies from TMDB API
- */
-const getTopRated = async (page = 1) => {
-  return await tmdbRequest('/movie/top_rated', { page });
-};
-
-/**
- * Fetch Upcoming movies from TMDB API
- */
-const getUpcoming = async (page = 1) => {
-  return await tmdbRequest('/movie/upcoming', { page });
-};
-
-/**
- * Search movies on TMDB
- */
-const searchMovies = async (query, page = 1) => {
-  return await tmdbRequest('/search/movie', { query, page });
-};
-
-/**
- * Get detailed movie information including credits and videos
- */
-const getMovieDetails = async (tmdbId) => {
+const upsertMovieToDB = async (movieData) => {
   try {
-    const data = await tmdbRequest(`/movie/${tmdbId}`, {
-      append_to_response: 'credits,videos'
-    });
-
-    // If videos results is empty, attempt a direct videos query
-    if (data && (!data.videos || !data.videos.results || data.videos.results.length === 0)) {
-      const extraVideos = await fetchMovieVideos(tmdbId);
-      if (extraVideos.length > 0) {
-        if (!data.videos) data.videos = {};
-        data.videos.results = extraVideos;
-      }
-    }
-
-    return data;
-  } catch (error) {
-    console.warn(`[tmdbService] Could not fetch extra details for TMDB ID ${tmdbId}:`, error.message);
-    return null;
-  }
-};
-
-/**
- * Sync a single TMDB movie object into MongoDB (upsert by tmdbId or movieName)
- */
-const syncMovieToDb = async (tmdbMovie, fetchDetails = true, categoryTag = null) => {
-  try {
-    if (isExcludedMovie(tmdbMovie)) return null;
-
-    const genreMap = await fetchGenreMap();
-    let details = null;
-    if (fetchDetails && tmdbMovie.id) {
-      details = await getMovieDetails(tmdbMovie.id);
-    }
-
-    const formatted = formatMovieData(tmdbMovie, details, genreMap, categoryTag);
-    if (!formatted) return null;
-
-    let query = {};
-    if (formatted.tmdbId) {
-      query = { tmdbId: formatted.tmdbId };
-    } else {
-      query = { movieName: formatted.movieName };
-    }
-
-    const updateOps = { $set: formatted };
-    if (categoryTag) {
-      updateOps.$addToSet = { categories: categoryTag };
-    }
-
-    const movie = await Movie.findOneAndUpdate(
-      query,
-      updateOps,
-      { new: true, upsert: true, runValidators: true }
+    const updated = await Movie.findOneAndUpdate(
+      { tmdbId: movieData.tmdbId },
+      { $set: movieData },
+      { upsert: true, new: true, runValidators: false }
     );
-
-    return movie;
-  } catch (error) {
-    console.error(`[tmdbService] Error syncing movie "${tmdbMovie.title}":`, error.message);
+    return updated;
+  } catch (err) {
+    console.error(`[TMDb] Upsert failed for "${movieData.movieName}": ${err.message}`);
     return null;
   }
 };
 
 /**
- * Fetch and sync a collection of now-playing movies from TMDB into MongoDB
+ * Main sync function. Call this at server start-up or via the admin
+ * "Sync TMDB" endpoint.
+ *
+ * @param {object} opts
+ * @param {string[]} opts.endpoints   – TMDB list endpoints to query
+ * @param {number}   opts.pages       – number of pages per endpoint (20 movies each)
+ * @param {boolean}  opts.fetchDetail – fetch full detail + credits + videos per movie
+ * @returns {{ synced: number, errors: number }}
  */
-const syncNowPlayingMovies = async (limit = 12) => {
-  try {
-    console.log('[tmdbService] Syncing live Now Playing movies with official trailers from TMDB...');
-    const genreMap = await fetchGenreMap();
-    const data = await getNowPlaying(1);
-    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
+const syncTMDBMovies = async ({
+  endpoints = ["/movie/now_playing", "/movie/popular", "/movie/top_rated"],
+  pages     = 2,
+  fetchDetail = true,
+} = {}) => {
+  if (!TMDB_API_KEY) {
+    console.warn("[TMDb] Sync skipped: TMDB_API_KEY not configured.");
+    return { synced: 0, errors: 0 };
+  }
 
-    const savedMovies = [];
-    for (const raw of results) {
-      let details = null;
-      try {
-        details = await getMovieDetails(raw.id);
-        await new Promise((r) => setTimeout(r, 120)); // graceful delay between calls
-      } catch (e) {
-        // non-fatal
-      }
-      const formatted = formatMovieData(raw, details, genreMap, 'now_playing');
-      if (!formatted) continue;
-      const doc = await Movie.findOneAndUpdate(
-        { tmdbId: formatted.tmdbId },
-        {
-          $set: formatted,
-          $addToSet: { categories: 'now_playing' }
-        },
-        { new: true, upsert: true }
-      );
-      if (doc) savedMovies.push(doc);
+  console.log(`[TMDb] Starting live sync – endpoints: ${endpoints.join(", ")} | pages: ${pages}`);
+
+  // Collect unique TMDB IDs from all list pages
+  const seen = new Set();
+  const tmdbIds = [];
+
+  for (const endpoint of endpoints) {
+    for (let p = 1; p <= pages; p++) {
+      const results = await fetchMovieList(endpoint, p);
+      results.forEach((m) => {
+        if (m.id && !seen.has(m.id)) {
+          seen.add(m.id);
+          tmdbIds.push(m.id);
+        }
+      });
+    }
+  }
+
+  console.log(`[TMDb] Discovered ${tmdbIds.length} unique movie IDs. Enriching & syncing...`);
+
+  let synced = 0;
+  let errors = 0;
+
+  // Process in batches of 5 to respect rate limits
+  const BATCH = 5;
+  for (let i = 0; i < tmdbIds.length; i += BATCH) {
+    const batch = tmdbIds.slice(i, i + BATCH);
+
+    const enriched = fetchDetail
+      ? await Promise.all(batch.map(fetchMovieDetail))
+      : batch.map((id) => ({ tmdbId: id }));
+
+    for (const movieData of enriched) {
+      if (!movieData) { errors++; continue; }
+      const saved = await upsertMovieToDB(movieData);
+      if (saved) synced++; else errors++;
     }
 
-    console.log(`[tmdbService] Successfully synced ${savedMovies.length} Now Playing movies with genuine trailers.`);
-    return savedMovies;
-  } catch (error) {
-    console.error('[tmdbService] Failed to sync Now Playing movies:', error.message);
-    return [];
+    // Small delay to avoid hammering TMDB (rate limit: 40 req/10s)
+    if (i + BATCH < tmdbIds.length) {
+      await new Promise((r) => setTimeout(r, 300));
+    }
   }
+
+  console.log(`[TMDb] Sync complete → synced: ${synced} | errors: ${errors}`);
+  return { synced, errors };
 };
 
 /**
- * Fetch and sync popular movies from TMDB into MongoDB
+ * Lightweight sync: only re-fetch now_playing (1 page, no detail calls).
+ * Used by the periodic cron job to keep new releases flowing.
  */
-const syncPopularMovies = async (limit = 12) => {
-  try {
-    console.log('[tmdbService] Syncing live Popular/Trending movies with official trailers from TMDB...');
-    const genreMap = await fetchGenreMap();
-    const data = await getPopular(1);
-    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
-
-    const savedMovies = [];
-    for (const raw of results) {
-      let details = null;
-      try {
-        details = await getMovieDetails(raw.id);
-        await new Promise((r) => setTimeout(r, 120));
-      } catch (e) {
-        // non-fatal
-      }
-      const formatted = formatMovieData(raw, details, genreMap, 'popular');
-      if (!formatted) continue;
-
-      const doc = await Movie.findOneAndUpdate(
-        { tmdbId: formatted.tmdbId },
-        {
-          $set: formatted,
-          $addToSet: { categories: 'popular' }
-        },
-        { new: true, upsert: true }
-      );
-      if (doc) savedMovies.push(doc);
-    }
-
-    console.log(`[tmdbService] Successfully synced ${savedMovies.length} Popular movies.`);
-    return savedMovies;
-  } catch (error) {
-    console.error('[tmdbService] Failed to sync Popular movies:', error.message);
-    return [];
-  }
-};
+const quickSync = () =>
+  syncTMDBMovies({
+    endpoints:   ["/movie/now_playing", "/movie/popular"],
+    pages:       1,
+    fetchDetail: true,
+  });
 
 /**
- * Fetch and sync top rated movies from TMDB into MongoDB
+ * Search TMDB for movies matching a query string and upsert results.
+ * Called from the movie controller when a search term is provided.
  */
-const syncTopRatedMovies = async (limit = 10) => {
+const searchAndSyncTMDB = async (query) => {
+  if (!TMDB_API_KEY || !query) return [];
+
   try {
-    console.log('[tmdbService] Syncing live Top Rated movies with official trailers from TMDB...');
-    const genreMap = await fetchGenreMap();
-    const data = await getTopRated(1);
-    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
+    const res = await tmdb.get("/search/movie", {
+      params: { query, language: "en-US", page: 1, include_adult: false },
+    });
 
-    const savedMovies = [];
-    for (const raw of results) {
-      let details = null;
-      try {
-        details = await getMovieDetails(raw.id);
-        await new Promise((r) => setTimeout(r, 120));
-      } catch (e) {
-        // non-fatal
-      }
-      const formatted = formatMovieData(raw, details, genreMap, 'top_rated');
-      if (!formatted) continue;
+    const results = res.data.results?.slice(0, 10) || [];
+    const enriched = await Promise.all(results.map((m) => fetchMovieDetail(m.id)));
 
-      const doc = await Movie.findOneAndUpdate(
-        { tmdbId: formatted.tmdbId },
-        {
-          $set: formatted,
-          $addToSet: { categories: 'top_rated' }
-        },
-        { new: true, upsert: true }
-      );
-      if (doc) savedMovies.push(doc);
+    const saved = [];
+    for (const m of enriched) {
+      if (!m) continue;
+      const doc = await upsertMovieToDB(m);
+      if (doc) saved.push(doc);
     }
-
-    console.log(`[tmdbService] Successfully synced ${savedMovies.length} Top Rated movies.`);
-    return savedMovies;
-  } catch (error) {
-    console.error('[tmdbService] Failed to sync Top Rated movies:', error.message);
+    return saved;
+  } catch (err) {
+    console.error(`[TMDb] searchAndSyncTMDB("${query}") failed: ${err.message}`);
     return [];
   }
 };
 
-/**
- * Fetch and sync upcoming movies from TMDB into MongoDB
- */
-const syncUpcomingMovies = async (limit = 10) => {
-  try {
-    console.log('[tmdbService] Syncing live Upcoming movies with official trailers from TMDB...');
-    const genreMap = await fetchGenreMap();
-    const data = await getUpcoming(1);
-    const results = (data.results || []).filter(raw => !isExcludedMovie(raw)).slice(0, limit);
-
-    const savedMovies = [];
-    for (const raw of results) {
-      let details = null;
-      try {
-        details = await getMovieDetails(raw.id);
-        await new Promise((r) => setTimeout(r, 120));
-      } catch (e) {
-        // non-fatal
-      }
-      const formatted = formatMovieData(raw, details, genreMap, 'upcoming');
-      if (!formatted) continue;
-
-      const doc = await Movie.findOneAndUpdate(
-        { tmdbId: formatted.tmdbId },
-        {
-          $set: formatted,
-          $addToSet: { categories: 'upcoming' }
-        },
-        { new: true, upsert: true }
-      );
-      if (doc) savedMovies.push(doc);
-    }
-
-    console.log(`[tmdbService] Successfully synced ${savedMovies.length} Upcoming movies.`);
-    return savedMovies;
-  } catch (error) {
-    console.error('[tmdbService] Failed to sync Upcoming movies:', error.message);
-    return [];
-  }
-};
+// ---------------------------------------------------------------------------
+// Add tmdbId field to the Movie schema if not already present
+// ---------------------------------------------------------------------------
+// (We patch it here so the service is self-contained; the schema itself
+//  is updated separately.)
 
 module.exports = {
-  tmdbClient,
-  getApiKey,
-  tmdbRequest,
-  fetchGenreMap,
-  formatMovieData,
-  isExcludedMovie,
-  EXCLUDED_LANG_CODES,
-  EXCLUDED_LANG_NAMES,
-  extractTrailerUrl,
-  fetchMovieVideos,
-  fetchMovieTrailerUrl,
-  getNowPlaying,
-  getPopular,
-  getTopRated,
-  getUpcoming,
-  searchMovies,
-  getMovieDetails,
-  syncMovieToDb,
-  syncNowPlayingMovies,
-  syncPopularMovies,
-  syncTopRatedMovies,
-  syncUpcomingMovies
+  syncTMDBMovies,
+  quickSync,
+  searchAndSyncTMDB,
+  fetchMovieDetail,
+  fetchMovieList,
+  tmdb,
 };

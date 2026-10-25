@@ -1,22 +1,15 @@
-const router = require('express').Router();
-const {
-  getAllShows,
-  getShowsByMovieId,
-  getShowById,
-  addShow,
-  updateShow,
-  deleteShow
-} = require('../controllers/showController');
-const fetchUser = require('../middlewares/fetchUser');
+const express = require("express");
+const router = express.Router();
+const showController = require("../controllers/showController");
+const { fetchAdmin } = require("../middlewares/fetchUser");
 
-router.get('/', getAllShows);
-router.get('/movie/:movieId', getShowsByMovieId);
-router.get('/:showId', getShowById);
+// Public
+router.get("/", showController.getAllShows);
+router.get("/movie/:movieId", showController.getShowsByMovie);
+router.get("/:showId", showController.getShowById);
 
-router.post('/add', fetchUser, addShow);
-router.put('/update/:showId', fetchUser, updateShow);
-router.put('/:showId', fetchUser, updateShow);
-router.delete('/delete/:showId', fetchUser, deleteShow);
-router.delete('/:showId', fetchUser, deleteShow);
+// Admin
+router.post("/", fetchAdmin, showController.createShow);
+router.delete("/:showId", fetchAdmin, showController.deleteShow);
 
 module.exports = router;

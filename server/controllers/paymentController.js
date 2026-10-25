@@ -1,271 +1,296 @@
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
-const { v4: uuidv4 } = require('uuid');
-const Booking = require('../models/bookingModel');
-const Show = require('../models/showModel');
-const Movie = require('../models/movieModel');
-const { sendBookingConfirmation } = require('../utils/mailer');
-const { isShowExpired } = require('../utils/showTimeHelper');
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+const Booking = require("../models/bookingModel");
+const Show = require("../models/showModel");
+const Movie = require("../models/movieModel");
+const Theatre = require("../models/theatreModel");
+const { sendBookingConfirmation } = require("../utils/mailer");
+const { sendBookingConfirmationEmail } = require("../services/emailService");
+const { isShowPast } = require("../utils/dateTime");
 
+// Initialize Razorpay client with test credentials
 const getRazorpayInstance = () => {
-  const key_id = process.env.RAZORPAY_KEY_ID || 'rzp_test_TqZowQCQ3E5us4';
-  const key_secret = process.env.RAZORPAY_KEY_SECRET || 'lSiHHMZDMQB8ZQ88jKqAjyQJ';
+  const key_id = process.env.RAZORPAY_KEY_ID || "rzp_test_TrN3oYMB1qro7m";
+  const key_secret = process.env.RAZORPAY_KEY_SECRET || "51hFZxESV6J4mA43UAGAyHc0";
   return new Razorpay({ key_id, key_secret });
 };
 
+// Helper to get socket.io instance
+const getIO = (req) => req.app.get("io");
+
 /**
- * Step 2 & 3: Create Razorpay Order
- * POST /api/payment/create-order
+ * GET /api/payment/get-key
+ * Returns public Razorpay Key ID
  */
-const createOrder = async (req, res) => {
+exports.getKey = (req, res) => {
+  res.json({
+    success: true,
+    key: process.env.RAZORPAY_KEY_ID || "rzp_test_TrN3oYMB1qro7m",
+  });
+};
+
+/**
+ * Step 2 & 3: POST /api/payment/create-order
+ * Initializes a Razorpay order with amount (in paise) and currency (INR)
+ * Creates a provisional "Pending" booking in MongoDB
+ */
+exports.createOrder = async (req, res) => {
   try {
-    const {
-      showId,
-      selectedSeats,
-      totalAmount,
-      movieId,
-      theatreName,
-      showDate,
-      showTime,
-      ticketsData
-    } = req.body;
+    const { showId, selectedSeats, amount } = req.body;
+    const userEmail = req.user.email;
 
-    const userEmail = req.body.userEmail || req.user?.email;
-
-    if (!showId || !selectedSeats || !Array.isArray(selectedSeats) || selectedSeats.length === 0) {
+    if (!showId || !Array.isArray(selectedSeats) || selectedSeats.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'showId and an array of selectedSeats are required'
+        message: "Please provide showId and an array of selected seats.",
       });
     }
 
-    if (!totalAmount || Number(totalAmount) <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'A valid totalAmount greater than 0 is required'
-      });
-    }
+    // Lookup show
+    const show = await Show.findOne({
+      $or: [
+        { showId },
+        { _id: showId.match(/^[0-9a-fA-F]{24}$/) ? showId : null },
+      ],
+    });
 
-    // Verify show existence
-    const show = await Show.findOne({ showId });
     if (!show) {
-      return res.status(404).json({
-        success: false,
-        message: 'Show not found'
-      });
+      return res.status(404).json({ success: false, message: "Show not found." });
     }
 
-    if (isShowExpired(show.showDate, show.showTime)) {
+    if (isShowPast(show.showDate, show.showTime)) {
       return res.status(400).json({
         success: false,
-        message: 'This showtime has already passed and is no longer available for booking.'
+        message: "This show has already ended or started. Cannot create payment order for past shows.",
       });
     }
 
-    // Convert INR to smallest currency unit (paise)
-    const amountInPaise = Math.round(Number(totalAmount) * 100);
+    const now = new Date();
+    let seatSubtotal = 0;
+    const ticketsData = {};
 
-    // Initialize Razorpay client
-    const razorpay = getRazorpayInstance();
-    const options = {
-      amount: amountInPaise,
-      currency: 'INR',
-      receipt: `rcpt_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-      notes: {
-        showId,
-        userEmail: userEmail || 'user@imovies.com',
-        seats: selectedSeats.join(', ')
+    // Validate that seats exist and are not already booked by another user
+    for (const seatId of selectedSeats) {
+      const seat = show.tickets[seatId];
+      if (!seat) {
+        return res.status(400).json({ success: false, message: `Seat ${seatId} does not exist.` });
       }
+      if (seat.status === "booked") {
+        return res.status(400).json({ success: false, message: `Seat ${seatId} is already booked!` });
+      }
+      if (
+        seat.status === "locked" &&
+        seat.lockedBy &&
+        seat.lockedBy !== userEmail &&
+        seat.lockExpiresAt &&
+        new Date(seat.lockExpiresAt) > now
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Seat ${seatId} is currently reserved by another user.`,
+        });
+      }
+
+      seatSubtotal += seat.price || 200;
+      ticketsData[seatId] = {
+        seatNumber: seat.seatNumber,
+        tier: seat.tier,
+        price: seat.price,
+      };
+    }
+
+    // Convenience fee (5%) and taxes (2.5%)
+    const convenienceFee = Math.round(seatSubtotal * 0.05);
+    const taxes = Math.round(seatSubtotal * 0.025);
+    const grandTotal = amount ? Number(amount) : (seatSubtotal + convenienceFee + taxes);
+
+    // Convert INR to paise (smallest subunit)
+    const amountInPaise = Math.round(grandTotal * 100);
+
+    // Communicate with Razorpay Gateway
+    const razorpay = getRazorpayInstance();
+    const receiptId = `rcpt_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+
+    const orderOptions = {
+      amount: amountInPaise,
+      currency: "INR",
+      receipt: receiptId,
+      notes: {
+        showId: show.showId,
+        userEmail,
+        seats: selectedSeats.join(","),
+      },
     };
 
-    const order = await razorpay.orders.create(options);
+    const razorpayOrder = await razorpay.orders.create(orderOptions);
 
-    // Fetch movie name if available
-    let resolvedMovieName = 'Cinema Feature';
-    if (movieId) {
-      try {
-        const movieDoc = await Movie.findById(movieId);
-        if (movieDoc) resolvedMovieName = movieDoc.movieName;
-      } catch (mErr) {
-        // non-fatal
-      }
+    // Generate unique iMovies Booking ID
+    const generatedBookingId = "BK-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+
+    // Fetch movie and theatre snapshots
+    const movie = await Movie.findById(show.movieId);
+    let theatre = null;
+    if (show.theatreId) {
+      theatre = await Theatre.findOne({ theatreId: show.theatreId });
     }
 
-    // Create a pending booking record to track the order
-    const bookingId = uuidv4();
-    const pendingBooking = new Booking({
-      bookingId,
-      userEmail: userEmail || 'user@imovies.com',
-      showId,
-      movieId: movieId || show.movieId,
-      movieName: resolvedMovieName,
-      theatreName: theatreName || show.theatreName,
-      showDate: showDate || show.showDate,
-      showTime: showTime || show.showTime,
-      ticketsData: ticketsData || show.tickets,
+    // Create provisional "Pending" booking in database
+    const provisionalBooking = await Booking.create({
+      bookingId: generatedBookingId,
+      userEmail,
+      showId: show.showId,
+      ticketsData,
       selectedSeats,
-      totalAmount: Number(totalAmount),
-      paymentStatus: 'Pending',
-      paymentMethod: 'Razorpay',
-      razorpayOrderId: order.id
+      totalAmount: grandTotal,
+      paymentStatus: "Pending",
+      paymentMethod: "Razorpay (Test Mode)",
+      razorpayOrderId: razorpayOrder.id,
+      movieDetails: {
+        movieId: movie?._id.toString() || show.movieId,
+        movieName: movie?.movieName || "Movie",
+        posterUrl: movie?.posterUrl || "",
+        duration: movie?.duration || "2h 30m",
+        language: movie?.language || "English",
+      },
+      theatreDetails: {
+        theatreName: show.theatreName,
+        location: theatre?.location || "Multiplex Multiplex",
+      },
+      showDate: show.showDate,
+      showTime: show.showTime,
     });
 
-    await pendingBooking.save();
-
-    return res.status(200).json({
+    res.status(201).json({
       success: true,
-      message: 'Razorpay order created successfully',
-      orderId: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TqZowQCQ3E5us4',
-      bookingId,
-      booking: pendingBooking
+      message: "Razorpay order created successfully.",
+      order: razorpayOrder,
+      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_TrN3oYMB1qro7m",
+      bookingId: provisionalBooking.bookingId,
+      grandTotal,
+      currency: "INR",
     });
   } catch (error) {
-    console.error('[paymentController] Error creating Razorpay order:', error);
-    return res.status(500).json({
+    console.error("[Razorpay createOrder Error]:", error);
+    res.status(500).json({
       success: false,
-      message: error.message || 'Failed to initialize payment order'
+      message: error.message || "Failed to create Razorpay order.",
     });
   }
 };
 
 /**
- * Step 4: Verify Payment Signature & Finalize Booking
- * POST /api/payment/verify
+ * Step 4: POST /api/payment/verify
+ * Cryptographic signature verification using HMAC-SHA256
+ * Updates booking to "Completed", marks seats as "booked", sends confirmation
  */
-const verifyPayment = async (req, res) => {
+exports.verifyPayment = async (req, res) => {
   try {
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      bookingId
+      bookingId,
     } = req.body;
+    const userEmail = req.user.email;
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({
         success: false,
-        message: 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required'
+        message: "Missing Razorpay verification parameters (order_id, payment_id, signature).",
       });
     }
 
-    // Cryptographic signature verification using HMAC SHA256
-    const secret = process.env.RAZORPAY_KEY_SECRET || 'lSiHHMZDMQB8ZQ88jKqAjyQJ';
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const generatedSignature = hmac.digest('hex');
+    // 1. Cryptographic Signature Verification
+    const secret = process.env.RAZORPAY_KEY_SECRET || "51hFZxESV6J4mA43UAGAyHc0";
+    const generatedSignature = crypto
+      .createHmac("sha256", secret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
 
-    const isAuthentic = generatedSignature === razorpay_signature;
+    const isSignatureValid = generatedSignature === razorpay_signature;
 
-    if (!isAuthentic) {
-      console.error('[paymentController] Invalid signature verification failed');
+    if (!isSignatureValid) {
+      // Mark booking as Failed if found
       if (bookingId || razorpay_order_id) {
         await Booking.findOneAndUpdate(
           { $or: [{ bookingId }, { razorpayOrderId: razorpay_order_id }] },
-          { paymentStatus: 'Failed' }
+          { paymentStatus: "Failed" }
         );
       }
       return res.status(400).json({
         success: false,
-        message: 'Payment verification failed: Signature mismatch'
+        message: "Cryptographic signature verification failed! Invalid payment signature.",
       });
     }
 
-    // Find and update booking
+    // 2. Find the provisional booking
     let booking = await Booking.findOne({
       $or: [
-        { bookingId: bookingId || '' },
-        { razorpayOrderId: razorpay_order_id }
-      ]
+        { bookingId },
+        { razorpayOrderId: razorpay_order_id },
+      ],
     });
 
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Associated booking reservation not found'
+        message: "Corresponding booking record not found.",
       });
     }
 
-    booking.paymentStatus = 'Completed';
+    // 3. Mark booking as Completed
+    booking.paymentStatus = "Completed";
+    booking.paymentMethod = "Razorpay (Test Mode)";
     booking.razorpayPaymentId = razorpay_payment_id;
+    booking.razorpayOrderId = razorpay_order_id;
     booking.razorpaySignature = razorpay_signature;
+    booking.transactionId = razorpay_payment_id;
     await booking.save();
 
-    // Mark seats as permanently booked on the show
+    // 4. Mark seats as "booked" in Show document
     const show = await Show.findOne({ showId: booking.showId });
     if (show && show.tickets) {
-      const tickets = show.tickets;
-      for (const seatId of booking.selectedSeats) {
-        if (tickets[seatId]) {
-          tickets[seatId] = {
-            ...tickets[seatId],
-            status: 'booked',
-            bookedBy: booking.userEmail,
-            bookedAt: new Date(),
-            lockedBy: null,
-            lockedAt: null
-          };
+      booking.selectedSeats.forEach((seatId) => {
+        const seat = show.tickets[seatId];
+        if (seat) {
+          seat.status = "booked";
+          seat.lockedBy = null;
+          seat.lockExpiresAt = null;
+          seat.bookingId = booking.bookingId;
         }
-      }
-      show.tickets = tickets;
-      show.markModified('tickets');
+      });
+      show.markModified("tickets");
       await show.save();
 
-      // Emit real-time WebSocket seat-update
-      try {
-        const { io } = require('../server');
-        if (io) {
-          io.emit('seat-update', { showId: show.showId, tickets: show.tickets });
-        }
-      } catch (socketErr) {
-        console.warn('[Socket] Failed to emit seat-update on payment verify:', socketErr.message);
+      // Broadcast real-time availability update via Socket.io
+      const io = getIO(req);
+      if (io) {
+        io.to(`show_${show.showId}`).emit("seatsUpdated", {
+          showId: show.showId,
+          tickets: show.tickets,
+          action: "booked",
+          seats: booking.selectedSeats,
+        });
       }
     }
 
-    // Step 5: Trigger email notification asynchronously
-    try {
-      await sendBookingConfirmation(booking.userEmail, {
-        bookingId: booking.bookingId,
-        movieName: booking.movieName || 'Movie',
-        theatreName: booking.theatreName,
-        showDate: booking.showDate,
-        showTime: booking.showTime,
-        selectedSeats: booking.selectedSeats,
-        totalAmount: booking.totalAmount
-      });
-    } catch (mailErr) {
-      console.warn('[Mailer] Confirmation email warning:', mailErr.message);
-    }
+    // 5. Send automated confirmation email via Brevo
+    sendBookingConfirmationEmail(booking.userEmail, booking).catch((err) => {
+      console.error("[PaymentController] Brevo confirmation email failed:", err.message);
+    });
+    // Fallback mailer
+    sendBookingConfirmation(booking).catch(() => {});
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      message: 'Payment verified and tickets booked successfully!',
-      booking
+      message: "Payment successfully verified and booking confirmed! 🎉",
+      booking,
     });
   } catch (error) {
-    console.error('[paymentController] Error verifying payment:', error);
-    return res.status(500).json({
+    console.error("[Razorpay verifyPayment Error]:", error);
+    res.status(500).json({
       success: false,
-      message: error.message || 'Payment verification processing error'
+      message: error.message || "Error verifying payment signature.",
     });
   }
-};
-
-/**
- * Public Config Endpoint: returns key_id for frontend initialization
- * GET /api/payment/config
- */
-const getPaymentConfig = async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_TqZowQCQ3E5us4'
-  });
-};
-
-module.exports = {
-  createOrder,
-  verifyPayment,
-  getPaymentConfig
 };

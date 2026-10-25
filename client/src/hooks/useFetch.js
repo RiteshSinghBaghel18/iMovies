@@ -1,28 +1,30 @@
-import { useState, useEffect } from 'react';
-import { apiClient, API_URL } from '../utils/api';
+import { useState, useEffect, useCallback } from "react";
+import api from "../utils/api";
 
-function useFetch(url, options = {}) {
+export const useFetch = (url, options = {}) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     if (!url) return;
-    const fullUrl = url.startsWith('/') ? `${API_URL}${url}` : url;
     setLoading(true);
-    apiClient
-      .get(fullUrl, options)
-      .then((res) => {
-        setData(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, [url]);
+    setError(null);
+    try {
+      const response = await api.get(url, options);
+      setData(response.data);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  }, [url, JSON.stringify(options)]);
 
-  return { data, loading, error };
-}
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData };
+};
 
 export default useFetch;

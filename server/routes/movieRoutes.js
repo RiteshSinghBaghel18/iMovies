@@ -1,36 +1,15 @@
-const router = require('express').Router();
-const {
-  getAllMovies,
-  getMovieSections,
-  getMovieById,
-  getMarketNowPlaying,
-  getMarketPopular,
-  getMarketUpcoming,
-  searchMarketMovies,
-  syncTmdbMovies,
-  addMovie,
-  updateMovie,
-  deleteMovie
-} = require('../controllers/movieController');
-const fetchUser = require('../middlewares/fetchUser');
+const express = require("express");
+const router = express.Router();
+const movieController = require("../controllers/movieController");
+const { fetchAdmin } = require("../middlewares/fetchUser");
 
-// Live TMDB Market routes
-router.get('/market/now-playing', getMarketNowPlaying);
-router.get('/market/popular', getMarketPopular);
-router.get('/market/upcoming', getMarketUpcoming);
-router.get('/market/search', searchMarketMovies);
+// Public routes
+router.get("/", movieController.getAllMovies);
+router.get("/:movieId", movieController.getMovieById);
 
-// General movie routes
-router.get('/sections', getMovieSections);
-router.get('/', getAllMovies);
-router.get('/:id', getMovieById);
-
-// Protected routes (Admin / authenticated)
-router.post('/sync-tmdb', fetchUser, syncTmdbMovies);
-router.post('/add', fetchUser, addMovie);
-router.put('/update/:id', fetchUser, updateMovie);
-router.put('/:id', fetchUser, updateMovie);
-router.delete('/delete/:id', fetchUser, deleteMovie);
-router.delete('/:id', fetchUser, deleteMovie);
+// Admin routes
+router.post("/", fetchAdmin, movieController.createMovie);
+router.put("/:movieId", fetchAdmin, movieController.updateMovie);
+router.delete("/:movieId", fetchAdmin, movieController.deleteMovie);
 
 module.exports = router;

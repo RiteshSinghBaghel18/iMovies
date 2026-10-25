@@ -1,389 +1,280 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import Loader from '../components/Loader';
-import { api } from '../utils/api';
-import { useTheme } from '../utils/ThemeContext';
-import { isShowExpired, formatDisplayTime } from '../utils/showTimeHelper';
-import dayjs from 'dayjs';
+import React, { useState, useMemo } from "react";
+import { useParams, Link } from "react-router-dom";
+import dayjs from "dayjs";
+import useFetch from "../hooks/useFetch";
+import Loader from "../components/Loader";
+import { isShowPast } from "../utils/dateTime";
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Sparkles, 
+  Ticket, 
+  ArrowLeft,
+  ChevronRight,
+  ShieldCheck,
+  AlertCircle
+} from "lucide-react";
 
-function MovieShows() {
+const MovieShows = () => {
   const { movieId } = useParams();
-  const navigate = useNavigate();
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
 
-  const [movie, setMovie] = useState(null);
-  const [shows, setShows] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Generate next 7 days for tab selection
-  const next7Days = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, index) => {
-      const d = dayjs().add(index, 'day');
+  // Generate next 4 dates
+  const availableDates = useMemo(() => {
+    return [0, 1, 2, 3].map((offset) => {
+      const d = dayjs().add(offset, "day");
       return {
-        dateString: d.format('YYYY-MM-DD'),
-        dayName: index === 0 ? 'Today' : index === 1 ? 'Tomorrow' : d.format('ddd'),
-        displayDate: d.format('D MMM'),
+        dateStr: d.format("YYYY-MM-DD"),
+        dayName: offset === 0 ? "Today" : offset === 1 ? "Tomorrow" : d.format("ddd"),
+        dayNumber: d.format("DD"),
+        monthName: d.format("MMM"),
       };
     });
   }, []);
 
-  const [selectedDate, setSelectedDate] = useState(next7Days[0].dateString);
+  const [selectedDate, setSelectedDate] = useState(availableDates[0].dateStr);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [movieRes, showsRes] = await Promise.allSettled([
-          api.getMovieById(movieId),
-          api.getShowsByMovieId(movieId),
-        ]);
+  const { data, loading, error } = useFetch(`/shows/movie/${movieId}?date=${selectedDate}`);
 
-        if (movieRes.status === 'fulfilled') {
-          const mData = movieRes.value.data;
-          setMovie(mData?.movie || mData?.data || mData);
-        }
+  const movie = data?.movie;
+  const shows = data?.shows || [];
 
-        if (showsRes.status === 'fulfilled') {
-          const sData = showsRes.value.data;
-          const sList = Array.isArray(sData) ? sData : sData?.shows || sData?.data || [];
-          setShows(sList);
-        }
-      } catch (err) {
-        console.error('Error fetching shows:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (movieId) {
-      fetchData();
-    }
-  }, [movieId]);
-
-  // Filter shows matching selected date
-  const filteredShows = useMemo(() => {
-    return shows.filter((s) => {
-      if (!s.showDate) return false;
-      const formattedShowDate = dayjs(s.showDate).format('YYYY-MM-DD');
-      return formattedShowDate === selectedDate;
-    });
-  }, [shows, selectedDate]);
-
-  // Track dates that have scheduled shows
-  const datesWithShows = useMemo(() => {
-    return [...new Set(shows.map((s) => dayjs(s.showDate).format('YYYY-MM-DD')))].filter(Boolean);
-  }, [shows]);
-
-  // Check if all showtimes for currently selected date have passed
-  const allSlotsExpiredForDate = useMemo(() => {
-    if (filteredShows.length === 0) return false;
-    return filteredShows.every((s) => isShowExpired(s.showDate, s.showTime) || s.isExpired);
-  }, [filteredShows]);
-
-  // Group shows by Theatre and deduplicate time slots by canonical displayTime
-  const groupedByTheatre = useMemo(() => {
-    const map = {};
-    filteredShows.forEach((show) => {
-      const groupKey = show.theatreName || show.theatreId || 'unknown-theatre';
-      if (!map[groupKey]) {
-        map[groupKey] = {
-          theatreName: show.theatreName || 'Cinema',
-          location: show.location || 'City Centre',
-          theatre: {},
+  // Group shows by Theatre
+  const showsByTheatre = useMemo(() => {
+    const groups = {};
+    shows.forEach((show) => {
+      const tName = show.theatreName || "Multiplex Theatre";
+      if (!groups[tName]) {
+        groups[tName] = {
+          theatreName: tName,
+          theatreId: show.theatreId,
           shows: [],
         };
       }
-      map[groupKey].shows.push(show);
+      groups[tName].shows.push(show);
     });
-
-    return Object.values(map).map((group) => {
-      // Deduplicate slots within the same cinema auditorium by canonical display time
+    return Object.values(groups).map((group) => {
       const timeMap = new Map();
-      group.shows.forEach((show) => {
-        const canonicalTime = formatDisplayTime(show.showTime);
-        const existing = timeMap.get(canonicalTime);
-        if (!existing) {
-          timeMap.set(canonicalTime, show);
-        } else {
-          // If a slot duplicate exists, prioritize the active (non-expired) slot
-          const existingExpired = isShowExpired(existing.showDate, existing.showTime) || existing.isExpired;
-          const currentExpired = isShowExpired(show.showDate, show.showTime) || show.isExpired;
-          if (existingExpired && !currentExpired) {
-            timeMap.set(canonicalTime, show);
-          }
+      group.shows.forEach((s) => {
+        if (!timeMap.has(s.showTime)) {
+          timeMap.set(s.showTime, s);
+        } else if (timeMap.get(s.showTime).isPast && !s.isPast) {
+          timeMap.set(s.showTime, s);
         }
       });
-
-      // Sort showtimes chronologically
-      const uniqueShows = Array.from(timeMap.values()).sort((a, b) => {
-        const parseMinutes = (tStr) => {
-          const formatted = formatDisplayTime(tStr);
-          const parts = formatted.split(/[: ]/);
-          let h = parseInt(parts[0], 10) || 0;
-          const m = parseInt(parts[1], 10) || 0;
-          const period = (parts[2] || '').toUpperCase();
-          if (period === 'PM' && h < 12) h += 12;
-          if (period === 'AM' && h === 12) h = 0;
-          return h * 60 + m;
-        };
-        return parseMinutes(a.showTime) - parseMinutes(b.showTime);
-      });
-
       return {
         ...group,
-        shows: uniqueShows,
+        shows: Array.from(timeMap.values()),
       };
     });
-  }, [filteredShows]);
+  }, [shows]);
 
-  if (loading) return <Loader />;
+  if (loading) {
+    return <Loader message="Fetching available showtimes..." />;
+  }
+
+  const isToday = selectedDate === dayjs().format("YYYY-MM-DD");
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors ${isDark ? 'bg-[#000000] text-white' : 'bg-white text-zinc-900'}`}>
-      <Header />
-
-      {/* Movie Subheader */}
-      <div className={`border-b py-6 px-4 sm:px-6 lg:px-8 transition-colors ${isDark ? 'bg-[#121216] border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Link
-              to={`/moviedetails/${movieId}`}
-              className="w-10 h-10 rounded-xl bg-[#0a0a0a] border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:border-primary/50 transition"
-            >
-              <i className="fa-solid fa-arrow-left"></i>
-            </Link>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-                {movie?.movieName || 'Movie Shows'}
-              </h1>
-              <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-                <span>{movie?.language || 'All Languages'}</span>
-                <span>•</span>
-                <span>{movie?.duration || '120 mins'}</span>
-                {movie?.certification && (
-                  <>
-                    <span>•</span>
-                    <span className="text-primary font-semibold">{movie.certification}</span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
+    <div className="min-h-screen bg-[#000000] text-slate-100 pb-20">
+      
+      {/* Top Banner with Amazon Prime Styling */}
+      <div className="bg-[#09090b] border-b border-[#27272a] py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             to={`/moviedetails/${movieId}`}
-            className="text-xs text-primary hover:underline font-semibold flex items-center gap-1 self-start sm:self-center"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#ff6600] mb-3 transition-colors"
           >
-            <span>View Movie Synopsis</span>
-            <i className="fa-solid fa-arrow-right"></i>
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Movie Overview
           </Link>
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs uppercase font-bold text-[#ff6600] tracking-wider">
+                  Theatrical Box Office
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white">
+                {movie?.movieName || "Movie"} — Showtimes
+              </h1>
+              <p className="text-xs text-[#a1a1aa] mt-1">
+                {movie?.language} • {movie?.duration} • {movie?.genres?.join(", ")}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-md bg-[#18181f] text-[#ff6600] border border-[#27272a] text-xs font-bold uppercase">
+                {movie?.certification || "U/A"}
+              </span>
+              <span className="px-3 py-1 rounded-md bg-[#18181f] text-slate-300 border border-[#27272a] text-xs font-bold">
+                Dolby Atmos
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Date Selector Tabs */}
-      <div className="bg-[#09090b] border-b border-zinc-800 sticky top-16 z-30 shadow-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 scrollbar-none">
-            {next7Days.map((dayItem) => {
-              const isSelected = selectedDate === dayItem.dateString;
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        
+        {/* Date Selector Pills */}
+        <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-4 mb-8 shadow-lg">
+          <div className="flex items-center gap-3 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <span className="text-xs font-bold uppercase tracking-wider text-[#a1a1aa] flex items-center gap-1.5 mr-2 flex-shrink-0">
+              <Calendar className="w-4 h-4 text-[#ff6600]" />
+              <span>Select Date:</span>
+            </span>
+
+            {availableDates.map((d) => {
+              const isSelected = selectedDate === d.dateStr;
               return (
                 <button
-                  key={dayItem.dateString}
-                  onClick={() => setSelectedDate(dayItem.dateString)}
-                  className={`flex flex-col items-center justify-center px-4 py-2 rounded-xl text-center min-w-[80px] transition-all flex-shrink-0 ${
+                  key={d.dateStr}
+                  onClick={() => setSelectedDate(d.dateStr)}
+                  className={`flex flex-col items-center justify-center min-w-[80px] py-2.5 px-4 rounded-xl border transition-all ${
                     isSelected
-                      ? 'bg-primary text-white shadow-lg shadow-orange-950/60 scale-105 font-bold'
-                      : 'bg-[#0a0a0a] text-zinc-400 hover:text-white hover:bg-zinc-800 border border-zinc-800'
+                      ? "bg-[#ff6600] border-[#ff6600] text-slate-950 font-black shadow-lg shadow-[#ff6600]/30 scale-105"
+                      : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:text-white hover:border-[#ff6600]/50"
                   }`}
                 >
-                  <span className="text-[11px] font-semibold uppercase tracking-wider">
-                    {dayItem.dayName}
+                  <span className={`text-[10px] uppercase tracking-wider ${isSelected ? "text-slate-900 font-extrabold" : "text-[#a1a1aa]"}`}>
+                    {d.dayName}
                   </span>
-                  <span className="text-sm font-bold mt-0.5">{dayItem.displayDate}</span>
+                  <span className="text-lg font-black leading-tight">{d.dayNumber}</span>
+                  <span className={`text-[10px] font-medium ${isSelected ? "text-slate-900 font-bold" : "text-slate-400"}`}>
+                    {d.monthName}
+                  </span>
                 </button>
               );
             })}
           </div>
         </div>
-      </div>
 
-      {/* Showtimes Content */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
-        {groupedByTheatre.length === 0 ? (
-          <div className="text-center py-16 bg-[#121216] rounded-2xl border border-zinc-800 max-w-lg mx-auto p-8 shadow-2xl">
-            <div className="text-5xl mb-3">🎟️</div>
-            <h3 className="text-xl font-bold text-white mb-2">No Showtimes for {dayjs(selectedDate).format('MMMM D, YYYY')}</h3>
-            <p className="text-zinc-400 text-sm mb-6">
-              {datesWithShows.length > 0
-                ? 'Screenings are currently available on the dates below. Select any date to view auditoriums:'
-                : 'There are currently no active screening schedules for this title. Please check back soon or choose another movie.'}
+        {/* Legend */}
+        <div className="flex flex-wrap items-center justify-between text-xs text-[#a1a1aa] mb-6 px-2">
+          <div className="flex items-center gap-6">
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#ff6600]"></span>
+              Available
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#f59e0b]"></span>
+              Fast Filling
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-slate-700"></span>
+              Show Ended / Closed
+            </span>
+          </div>
+          <span className="text-[#a1a1aa] italic hidden sm:inline">
+            *Past showtimes for today are automatically closed and cannot be booked.
+          </span>
+        </div>
+
+        {/* Theatres & Showtimes List */}
+        {showsByTheatre.length === 0 ? (
+          <div className="text-center py-16 bg-[#121216] rounded-2xl border border-[#27272a] p-8">
+            <Clock className="w-12 h-12 text-[#a1a1aa] mx-auto mb-3 opacity-60" />
+            <h3 className="text-lg font-bold text-white">No Shows Scheduled for this Date</h3>
+            <p className="text-sm text-[#a1a1aa] mt-1 max-w-md mx-auto">
+              Please choose another date from the selector above or check back shortly.
             </p>
-            {datesWithShows.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2">
-                {datesWithShows.slice(0, 5).map((dStr) => (
-                  <button
-                    key={dStr}
-                    onClick={() => setSelectedDate(dStr)}
-                    className="px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-bold text-primary hover:bg-primary hover:text-black transition flex items-center gap-1.5"
-                  >
-                    <i className="fa-regular fa-calendar text-[11px]"></i>
-                    <span>{dayjs(dStr).format('ddd, D MMM')}</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         ) : (
           <div className="space-y-6">
-            {/* All Slots Expired Banner */}
-            {allSlotsExpiredForDate && (
-              <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-200">
-                <div className="flex items-center gap-2">
-                  <i className="fa-solid fa-clock-rotate-left text-primary text-sm"></i>
-                  <span>All showtimes scheduled for today ({dayjs(selectedDate).format('MMM D')}) have already concluded.</span>
-                </div>
-                {next7Days[1] && (
-                  <button
-                    onClick={() => setSelectedDate(next7Days[1].dateString)}
-                    className="px-3 py-1.5 bg-primary text-black font-black rounded-lg hover:bg-orange-500 transition self-start sm:self-auto flex items-center gap-1.5"
-                  >
-                    <span>View Tomorrow&apos;s Shows ({next7Days[1].displayDate})</span>
-                    <i className="fa-solid fa-arrow-right text-[10px]"></i>
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Theatre & Showtime Availability Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-zinc-800 gap-2">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
-                <h2 className="text-sm sm:text-base font-black uppercase tracking-wider text-white">
-                  Available Theatres for {dayjs(selectedDate).format('MMMM D, YYYY')} ({groupedByTheatre.length} {groupedByTheatre.length === 1 ? 'Cinema' : 'Cinemas'})
-                </h2>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-zinc-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Active Booking
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-zinc-600"></span> Passed Slot
-                </span>
-              </div>
-            </div>
-
-            {groupedByTheatre.map((group, idx) => (
+            {showsByTheatre.map((theatreGroup) => (
               <div
-                key={idx}
-                className="bg-card rounded-2xl border border-gray-800 p-6 shadow-xl hover:border-gray-700 transition"
+                key={theatreGroup.theatreName}
+                className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 shadow-md space-y-4 hover:border-[#223654] transition-colors"
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 mb-5 border-b border-gray-800/80 gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-building text-primary"></i>
-                      <h3 className="text-xl font-bold text-white">{group.theatreName}</h3>
+                {/* Theatre Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-primary" />
+                      {theatreGroup.theatreName}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-[#a1a1aa]">
+                      <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-primary font-semibold">
+                        4K Laser
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-amber-400 font-semibold">
+                        Dolby Atmos 7.1
+                      </span>
+                      <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-slate-300">
+                        Instant M-Ticket
+                      </span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                      <i className="fa-solid fa-location-dot text-gray-500"></i>
-                      {group.location}
-                    </p>
                   </div>
 
-                  {/* Pricing Tiers Preview */}
-                  <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs">
-                    {(group.theatre?.balconySeatPrice || group.shows[0]?.balconyPrice) && (
-                      <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
-                        <strong className="text-primary">Balcony:</strong> ₹
-                        {group.theatre?.balconySeatPrice || group.shows[0]?.balconyPrice}
-                      </span>
-                    )}
-                    {(group.theatre?.middleSeatPrice || group.shows[0]?.middlePrice) && (
-                      <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
-                        <strong className="text-primary">Middle:</strong> ₹
-                        {group.theatre?.middleSeatPrice || group.shows[0]?.middlePrice}
-                      </span>
-                    )}
-                    {(group.theatre?.lowerSeatPrice || group.shows[0]?.lowerPrice) && (
-                      <span className="bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-lg text-zinc-300">
-                        <strong className="text-primary">Lower:</strong> ₹
-                        {group.theatre?.lowerSeatPrice || group.shows[0]?.lowerPrice}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs text-emerald-400 font-medium flex items-center gap-1 self-start sm:self-auto">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Verified Theatre
+                  </span>
                 </div>
 
-                {/* Showtimes Cards Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                  {group.shows.map((show) => {
-                    const showId = show.showId || show._id || show.id;
-                    const isExpired = isShowExpired(show.showDate, show.showTime) || show.isExpired;
-                    const displayTime = formatDisplayTime(show.showTime || '18:00');
+                {/* Showtimes Pills */}
+                <div>
+                  <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-3">
+                    Showtimes for {selectedDate}:
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    {theatreGroup.shows.map((show) => {
+                      const isPast = show.isPast !== undefined ? show.isPast : isShowPast(show.showDate, show.showTime);
 
-                    if (isExpired) {
-                      return (
-                        <div
-                          key={showId}
-                          className="bg-[#0e0e12] border border-zinc-800/80 rounded-xl p-3 flex flex-col justify-between opacity-55 cursor-not-allowed select-none transition-all"
-                          title={`Showtime at ${displayTime} has already concluded for today`}
-                        >
-                          <div className="text-center">
-                            <span className="text-base font-bold text-zinc-500 line-through block">
-                              {displayTime}
+                      // If show is in the past: render disabled, non-clickable card
+                      if (isPast) {
+                        return (
+                          <div
+                            key={show.showId}
+                            title="This show has already ended or started and cannot be booked."
+                            className="px-5 py-3 rounded-xl bg-[#09090b] border border-slate-800/80 opacity-40 cursor-not-allowed flex flex-col items-center min-w-[110px] select-none"
+                          >
+                            <span className="text-sm font-semibold text-slate-400 line-through">
+                              {show.showTime}
                             </span>
-                            <span className="text-[10px] text-zinc-400 font-semibold inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-zinc-800/90 border border-zinc-700/60">
-                              <i className="fa-regular fa-clock text-[9px] text-zinc-400"></i> Passed
+                            <span className="text-[10px] text-slate-500 mt-0.5">
+                              From ₹{show.pricing?.lower || 150}
+                            </span>
+                            <span className="text-[9px] text-rose-400 uppercase font-bold tracking-wider mt-1">
+                              Show Ended
                             </span>
                           </div>
+                        );
+                      }
 
-                          <button
-                            type="button"
-                            disabled
-                            className="w-full mt-3 py-1.5 px-2 bg-zinc-800/80 text-zinc-400 text-xs font-bold rounded-lg cursor-not-allowed flex items-center justify-center gap-1"
-                          >
-                            <i className="fa-solid fa-ban text-[10px]"></i>
-                            <span>Show Closed</span>
-                          </button>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div
-                        key={showId}
-                        className="bg-zinc-900 border border-zinc-800 hover:border-primary rounded-xl p-3 flex flex-col justify-between group transition-all shadow-md hover:shadow-orange-950/40"
-                      >
-                        <div className="text-center">
-                          <span className="text-lg font-black text-white group-hover:text-primary transition-colors block">
-                            {displayTime}
-                          </span>
-                          <span className="text-[10px] text-emerald-400 font-semibold inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-800/50">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Available
-                          </span>
-                        </div>
-
-                        <button
-                          onClick={() => navigate(`/seatslug/${showId}`)}
-                          className="w-full mt-3 py-1.5 px-2 bg-primary hover:bg-orange-500 text-black text-xs font-black rounded-lg transition duration-200 flex items-center justify-center gap-1 shadow-sm"
+                      // Upcoming active show: render clickable Prime cyan card
+                      return (
+                        <Link
+                          key={show.showId}
+                          to={`/seatslug/${show.showId}`}
+                          className="group relative px-5 py-3 rounded-xl bg-[#18181f] border border-[#27272a] hover:border-[#ff6600] hover:bg-[#1a2b42] transition-all shadow-md flex flex-col items-center min-w-[110px]"
                         >
-                          <span>Select Seats</span>
-                          <i className="fa-solid fa-chevron-right text-[10px]"></i>
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <span className="text-sm font-black text-slate-100 group-hover:text-[#ff6600] transition-colors">
+                            {show.showTime}
+                          </span>
+                          <span className="text-[10px] text-[#a1a1aa] mt-0.5">
+                            From ₹{show.pricing?.lower || 150}
+                          </span>
+                          <span className="text-[9px] text-[#ff6600] uppercase font-bold tracking-wider mt-1">
+                            Select Seats
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
+
               </div>
             ))}
           </div>
         )}
-      </main>
 
-      <Footer />
+      </div>
+
     </div>
   );
-}
+};
 
 export default MovieShows;

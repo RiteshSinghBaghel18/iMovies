@@ -1,395 +1,310 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { api } from '../utils/api';
-import { useTheme } from '../utils/ThemeContext';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { Film, Lock, Mail, User, ShieldCheck, CheckCircle2, Send, ArrowRight, KeyRound, AlertTriangle, Sparkles, Eye, EyeOff } from "lucide-react";
+import { toast } from "react-toastify";
+import api from "../utils/api";
 
-function Register() {
-  const { theme } = useTheme();
-  const navigate = useNavigate();
-
-  const [step, setStep] = useState('form'); // 'form' or 'verify'
-  const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const [verificationCode, setVerificationCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
+const Register = () => {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  // OTP Verification Window state
+  const [showOtpWindow, setShowOtpWindow] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [devOtp, setDevOtp] = useState(null);
+  const [ipNotice, setIpNotice] = useState(null);
 
-  const getPasswordStrength = (pwd) => {
-    if (!pwd) return { label: 'Empty', score: 0, color: 'bg-zinc-700' };
-    let score = 0;
-    if (pwd.length >= 6) score++;
-    if (/[A-Z]/.test(pwd)) score++;
-    if (/[0-9]/.test(pwd)) score++;
-    if (/[^A-Za-z0-9]/.test(pwd)) score++;
-
-    if (score <= 1) return { label: 'Weak', score: 25, color: 'bg-zinc-700' };
-    if (score === 2) return { label: 'Fair', score: 50, color: 'bg-orange-700' };
-    if (score === 3) return { label: 'Good', score: 75, color: 'bg-orange-500' };
-    return { label: 'Strong', score: 100, color: 'bg-primary' };
-  };
-
-  const strength = getPasswordStrength(formData.password);
+  const { register, verifyOtp } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { username, email, password, confirmPassword } = formData;
 
-    if (!username.trim() || !email.trim() || !password) {
-      toast.error('All fields are required');
+    if (username.length < 3 || username.length > 20) {
+      toast.error("Username must be between 3 and 20 characters.");
       return;
     }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-
     if (password.length < 6) {
-      toast.warning('Password must be at least 6 characters');
+      toast.error("Password must be at least 6 characters.");
       return;
     }
 
-    try {
-      setLoading(true);
-      const payload = { username: username.trim(), email: email.trim(), password };
-      const response = await api.registerUser(payload);
+    setLoading(true);
+    const result = await register(username, email, password, false);
+    setLoading(false);
 
-      if (response.data.success) {
-        toast.success(response.data.message || "Verification email dispatched! (Didn't receive it? Please check your spam or junk folder.)");
-        // Transition to verification code step
-        setStep('verify');
+    if (result?.success) {
+      if (result.requiresVerification) {
+        if (result.devOtp) setDevOtp(result.devOtp);
+        if (result.ipNotice) setIpNotice(result.ipNotice);
+        setShowOtpWindow(true);
       } else {
-        toast.error(response.data.message || 'Registration failed');
+        navigate("/home");
       }
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Registration failed');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleVerifySubmit = async (e) => {
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
-    if (!verificationCode.trim()) {
-      toast.error('Please enter the 6-digit verification code from your email');
+    if (!otp || otp.length !== 6) {
+      toast.error("Please enter the complete 6-digit OTP code.");
       return;
     }
 
-    try {
-      setLoading(true);
-      const res = await api.verifyEmail({
-        email: formData.email.trim(),
-        token: verificationCode.trim(),
-      });
+    setOtpLoading(true);
+    const result = await verifyOtp(email, otp);
+    setOtpLoading(false);
 
-      if (res.data.success) {
-        toast.success('Account verified successfully! Welcome to iMovies.');
-        if (res.data.token && res.data.user) {
-          localStorage.setItem('imovies-token', res.data.token);
-          localStorage.setItem('imovies-role', 'user');
-          localStorage.setItem('imovies-user', JSON.stringify(res.data.user));
-          navigate('/home');
-        } else {
-          navigate('/login');
-        }
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Invalid or expired verification code');
-    } finally {
-      setLoading(false);
+    if (result?.success) {
+      navigate("/home");
     }
   };
 
-  const handleResendCode = async () => {
+  const handleResend = async () => {
+    if (!email) return;
+    setResending(true);
     try {
-      setResending(true);
-      const res = await api.resendVerification({ email: formData.email.trim() });
-      toast.success("New verification code dispatched! (Didn't receive it? Please check your spam or junk folder.)");
+      const res = await api.post("/auth/resend-verification", { email });
+      if (res.data.success) {
+        if (res.data.devOtp) setDevOtp(res.data.devOtp);
+        if (res.data.ipNotice) setIpNotice(res.data.ipNotice);
+        toast.success(res.data.message || "Fresh 6-digit OTP sent!");
+      }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to resend verification code');
+      toast.error(err.response?.data?.message || "Failed to resend OTP.");
     } finally {
       setResending(false);
     }
   };
 
-  const isDark = theme === 'dark';
-
   return (
-    <div className={`min-h-screen flex flex-col ${isDark ? 'bg-black text-white' : 'bg-[#f4f4f5] text-zinc-900'}`}>
-      <Header />
+    <div className="min-h-[85vh] flex items-center justify-center px-4 py-12 bg-[#000000]">
+      <div className="w-full max-w-md">
+        
+        {/* Amazon Prime Replica Card */}
+        <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-8 shadow-2xl">
+          
+          {showOtpWindow ? (
+            /* OTP Verification Window */
+            <div className="py-2 space-y-5 animate-fade-in text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 shadow-lg">
+                <KeyRound className="w-8 h-8 text-[#ff6600]" />
+              </div>
 
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative">
-        <div
-          className="w-full max-w-md border rounded-none p-6 sm:p-8 relative overflow-hidden z-10 shadow-2xl transition-colors"
-          style={{ backgroundColor: isDark ? '#121216' : '#ffffff' }}
-        >
-          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#ff6600] via-[#ff7700] to-[#ffa333]"></div>
+              <div>
+                <h2 className="text-2xl font-black text-white">Enter Verification OTP</h2>
+                <p className="text-xs text-[#a1a1aa] mt-1">
+                  We've generated a 6-digit code for:
+                </p>
+                <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#ff6600]">
+                  {email}
+                </div>
+              </div>
 
-          {step === 'form' ? (
+              {/* Notice if Brevo IP Whitelisting is pending */}
+              {devOtp && (
+                <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-600/50 text-amber-200 text-left text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-amber-300">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                    <span>Brevo Live Delivery Notice</span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Brevo requires authorizing your current network IP at{" "}
+                    <a
+                      href="https://app.brevo.com/security/authorised_ips"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-white underline font-semibold"
+                    >
+                      brevo.com/security/authorised_ips
+                    </a>{" "}
+                    for live Gmail delivery.
+                  </p>
+                  <div className="pt-1 flex items-center justify-between bg-slate-950/80 p-2.5 rounded-xl border border-amber-500/30">
+                    <span className="text-[11px] text-slate-300 font-medium">Session OTP Code:</span>
+                    <button
+                      type="button"
+                      onClick={() => setOtp(devOtp)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs font-mono shadow-sm transition-all"
+                    >
+                      Fill {devOtp}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* OTP Form */}
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                    6-Digit One-Time Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      required
+                      autoFocus
+                      value={otp}
+                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                      placeholder="• • • • • •"
+                      className="w-full bg-[#09090b] border-2 border-[#ff6600]/50 focus:border-[#ff6600] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all shadow-inner font-mono"
+                    />
+                  </div>
+                  <p className="text-[11px] text-[#a1a1aa] mt-1.5">
+                    Check your email inbox (and spam folder) for the 6-digit code
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={otpLoading || otp.length !== 6}
+                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{otpLoading ? "Verifying Code..." : "Verify OTP & Continue"}</span>
+                </button>
+              </form>
+
+              <div className="pt-2 border-t border-[#27272a] space-y-3">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="text-xs text-[#a1a1aa] hover:text-[#ff6600] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5 text-[#ff6600]" />
+                  <span>{resending ? "Sending fresh OTP..." : "Didn't receive code? Resend OTP"}</span>
+                </button>
+
+                <div>
+                  <Link
+                    to="/login"
+                    className="text-xs text-slate-400 hover:text-white transition-colors"
+                  >
+                    Back to Sign In
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Standard User Registration Form (No Admin Signup Allowed) */
             <>
-              <div className="text-center mb-6">
-                <span className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 border border-primary/20 text-primary text-xl mb-3">
-                  🍿
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">Create User Account</h2>
-                <p className="text-zinc-400 text-xs sm:text-sm mt-1">Unlock instant ticket bookings and watchlist features</p>
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center gap-2.5 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 shadow-md">
+                    <Film className="w-5 h-5" />
+                  </div>
+                  <span className="text-2xl font-black text-white">
+                    i<span className="text-[#ff6600]">Movies</span>
+                  </span>
+                </div>
+                <h2 className="text-xl font-bold text-white">
+                  Create Your Account
+                </h2>
+                <p className="text-xs text-[#a1a1aa] mt-1">
+                  Join iMovies to book tickets, reserve live seats, and manage passes
+                </p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Username */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                    Username
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Username (3-20 characters)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                      <i className="fa-solid fa-user"></i>
-                    </div>
+                    <User className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      name="username"
                       required
                       minLength={3}
                       maxLength={20}
-                      value={formData.username}
-                      onChange={handleChange}
-                      placeholder="cinephile99"
-                      className={`w-full pl-10 pr-4 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                        isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                      }`}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="e.g. alex_harrison"
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
                     />
                   </div>
                 </div>
 
-                {/* Email */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                    Email Address
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Email Address (max 50 chars)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                      <i className="fa-regular fa-envelope"></i>
-                    </div>
+                    <Mail className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
-                      name="email"
                       required
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="user@example.com"
-                      className={`w-full pl-10 pr-4 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                        isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                      }`}
+                      maxLength={50}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
                     />
                   </div>
                 </div>
 
-                {/* Password */}
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                    Password
+                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                    Password (min 6 characters)
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                      <i className="fa-solid fa-lock"></i>
-                    </div>
+                    <Lock className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
+                      type={showPassword ? "text" : "password"}
                       required
                       minLength={6}
-                      value={formData.password}
-                      onChange={handleChange}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className={`w-full pl-10 pr-10 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                        isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                      }`}
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer focus:outline-none"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a1a1aa] hover:text-white transition-colors focus:outline-none p-1"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
-                    </button>
-                  </div>
-
-                  {/* Password strength bar */}
-                  {formData.password && (
-                    <div className="mt-2">
-                      <div className="flex justify-between items-center text-[10px] text-zinc-400 mb-1">
-                        <span>Strength: {strength.label}</span>
-                        <span>{strength.score}%</span>
-                      </div>
-                      <div className="h-1 w-full bg-zinc-800 overflow-hidden">
-                        <div
-                          className={`h-full ${strength.color} transition-all duration-300`}
-                          style={{ width: `${strength.score}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1.5">
-                    Confirm Password
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                      <i className="fa-solid fa-lock-open"></i>
-                    </div>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      required
-                      minLength={6}
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      placeholder="••••••••"
-                      className={`w-full pl-10 pr-10 py-2.5 border rounded-none text-sm focus:outline-none focus:border-primary transition ${
-                        isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      title={showConfirmPassword ? 'Hide password' : 'Show password'}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-zinc-400 hover:text-primary transition-colors cursor-pointer focus:outline-none"
-                    >
-                      <i className={`fa-solid ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 bg-primary hover:bg-orange-600 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-950/40 transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all hover:scale-[1.02] disabled:opacity-50 mt-2"
                 >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      <span>Creating Account...</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-user-plus"></i>
-                      <span>Sign Up &amp; Verify Email</span>
-                    </>
-                  )}
+                  {loading ? "Creating Account..." : "Create Account & Send OTP"}
                 </button>
               </form>
 
-              <div className="mt-6 text-center text-xs text-zinc-400 pt-4 border-t border-zinc-800">
-                Already registered?{' '}
-                <Link to="/login" className="text-primary hover:underline font-bold ml-1">
-                  Sign In instead
+              <div className="mt-6 text-center text-xs text-[#a1a1aa]">
+                Already have an account?{" "}
+                <Link to="/login" className="text-[#ff6600] hover:text-[#ff7700] font-bold transition-colors">
+                  Sign In
                 </Link>
               </div>
             </>
-          ) : (
-            /* STEP 2: VERIFICATION CODE INPUT */
-            <div className="space-y-5">
-              <div className="text-center">
-                <span className="inline-flex items-center justify-center w-14 h-14 bg-primary/10 border border-primary/30 text-primary text-2xl mb-3 shadow-md">
-                  <i className="fa-solid fa-envelope-circle-check"></i>
-                </span>
-                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight">Check Your Inbox</h2>
-                <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                  We've dispatched a 6-digit verification code to <strong>{formData.email}</strong>.
-                </p>
-                <p className="text-zinc-500 text-xs mt-2 flex items-center justify-center gap-1.5">
-                  <i className="fa-regular fa-envelope text-primary text-[11px]"></i>
-                  <span>Didn't receive the email? Please check your spam or junk folder.</span>
-                </p>
-              </div>
-
-              <form onSubmit={handleVerifySubmit} className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                      6-Digit Activation Code
-                    </label>
-                    <button
-                      type="button"
-                      onClick={handleResendCode}
-                      disabled={resending}
-                      className="text-xs text-primary hover:underline font-semibold"
-                    >
-                      {resending ? 'Sending...' : 'Resend Code?'}
-                    </button>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    maxLength={10}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="e.g. 549102"
-                    className={`w-full px-4 py-3 border rounded-none text-center font-mono text-xl tracking-widest focus:outline-none focus:border-primary transition ${
-                      isDark ? 'bg-[#0a0a0a] border-zinc-800 text-white' : 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                    }`}
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3 bg-primary hover:bg-orange-600 text-black font-black text-xs uppercase tracking-wider shadow-lg shadow-orange-950/40 transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                      <span>Verifying...</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-check"></i>
-                      <span>Verify &amp; Activate Account</span>
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <div className="flex items-center justify-between text-xs text-zinc-400 pt-3 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setStep('form')}
-                  className="text-zinc-400 hover:text-white transition flex items-center gap-1 font-semibold"
-                >
-                  <i className="fa-solid fa-arrow-left"></i> Change Email
-                </button>
-                <Link to="/login" className="text-primary hover:underline font-semibold">
-                  Back to Sign In
-                </Link>
-              </div>
-            </div>
           )}
-        </div>
-      </main>
 
-      <Footer />
+        </div>
+      </div>
     </div>
   );
-}
+};
 
 export default Register;

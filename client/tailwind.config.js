@@ -1,10 +1,14 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
   darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Vibrant Orange, Pitch Black & Clean White Palette
         primary: {
           DEFAULT: '#ff6600',
           hover: '#ff7700',
@@ -16,9 +20,9 @@ export default {
           400: '#fb923c',
           500: '#ff6600',
           600: '#ff7700',
-          700: '#ff8800',
-          800: '#ea580c',
-          900: '#c2410c',
+          700: '#ea580c',
+          800: '#c2410c',
+          900: '#9a3412',
         },
         dark: {
           DEFAULT: '#09090b',
@@ -27,21 +31,46 @@ export default {
           700: '#18181f',
           600: '#272730',
         },
-        darker: '#000000',
-        card: '#0f0f13',
+        card: '#121216',
         accent: '#ff6600',
+
+        // Unified Cinema / Prime Classes Mapped Directly to Orange & Black
+        prime: {
+          darkest: '#000000', // Pitch Black
+          dark: '#0a0a0a',    // Dark obsidian surface
+          surface: '#121216', // Dark card panel
+          card: '#121216',
+          cardHover: '#1c1c24',
+          border: '#27272a',  // Subtle zinc border
+          blue: '#ff6600',    // Signature Vibrant Orange
+          blueHover: '#ff7700',
+          blueDark: '#ea580c',
+          gold: '#ffaa00',    // Warm Amber Gold
+          muted: '#a1a1aa',   // Muted slate text
+        },
+        cinema: {
+          darkest: '#000000',
+          dark: '#0a0a0a',
+          surface: '#121216',
+          card: '#121216',
+          border: '#27272a',
+          red: '#ff6600',      // Signature Vibrant Orange
+          redHover: '#ff7700',
+          gold: '#ffaa00',
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.45)',
+        'glow-prime': '0 0 25px -4px rgba(255, 102, 0, 0.45)',
+        'glow-cyan': '0 0 20px -3px rgba(255, 102, 0, 0.4)',
+        'glow-orange': '0 0 25px -4px rgba(255, 102, 0, 0.45)',
+        'glow-gold': '0 0 20px -3px rgba(255, 170, 0, 0.4)',
         'orange-glow': '0 0 25px rgba(255, 102, 0, 0.35)',
         'orange-sm': '0 0 12px rgba(255, 102, 0, 0.25)',
-      },
-      backgroundImage: {
-        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'glass-gradient': 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
-        'hero-vignette': 'radial-gradient(circle at center, transparent 0%, #000000 90%)',
       }
-    }
+    },
   },
-  plugins: []
-};
+  plugins: [],
+}

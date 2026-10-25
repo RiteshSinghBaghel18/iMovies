@@ -1,22 +1,15 @@
-const router = require('express').Router();
-const {
-  getAllTheatres,
-  getTheatreById,
-  addTheatre,
-  updateTheatre,
-  deleteTheatre
-} = require('../controllers/theatreController');
-const fetchUser = require('../middlewares/fetchUser');
+const express = require("express");
+const router = express.Router();
+const theatreController = require("../controllers/theatreController");
+const { fetchAdmin } = require("../middlewares/fetchUser");
 
-// Public/authenticated theatre routes
-router.get('/', getAllTheatres);
-router.get('/:theatreId', getTheatreById);
+// Public
+router.get("/", theatreController.getAllTheatres);
+router.get("/:theatreId", theatreController.getTheatreById);
 
-// Protected routes
-router.post('/add', fetchUser, addTheatre);
-router.put('/update/:theatreId', fetchUser, updateTheatre);
-router.put('/:theatreId', fetchUser, updateTheatre);
-router.delete('/delete/:theatreId', fetchUser, deleteTheatre);
-router.delete('/:theatreId', fetchUser, deleteTheatre);
+// Admin
+router.post("/", fetchAdmin, theatreController.createTheatre);
+router.put("/:theatreId", fetchAdmin, theatreController.updateTheatre);
+router.delete("/:theatreId", fetchAdmin, theatreController.deleteTheatre);
 
 module.exports = router;

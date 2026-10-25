@@ -1,25 +1,20 @@
-import React from 'react';
+import React from "react";
+import { Film } from "lucide-react";
 
-function Loader() {
+const Loader = ({ message = "Loading iMovies..." }) => {
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black z-50">
-      <div className="text-center p-8 rounded-3xl bg-[#121216] border border-zinc-800 shadow-2xl">
-        <div className="text-5xl mb-3 animate-pulse">🎬</div>
-        <div className="text-2xl font-black bg-gradient-to-r from-[#ff6600] via-[#ff7700] to-[#ffa333] bg-clip-text text-transparent mb-4 tracking-wider">
-          iMovies
-        </div>
-        <div className="flex gap-2 justify-center">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-3 h-3 bg-primary rounded-full animate-bounce shadow-orange-sm"
-              style={{ animationDelay: `${i * 0.15}s` }}
-            ></div>
-          ))}
-        </div>
+    <div className="flex flex-col items-center justify-center min-h-[50vh] p-8">
+      <div className="relative flex items-center justify-center">
+        {/* Outer glowing pulsing ring */}
+        <div className="w-16 h-16 rounded-full border-4 border-red-600/20 border-t-red-600 animate-spin" />
+        {/* Film reel center icon */}
+        <Film className="w-7 h-7 text-red-500 absolute animate-pulse" />
       </div>
+      <p className="mt-4 text-slate-400 font-medium tracking-wide text-sm animate-pulse">
+        {message}
+      </p>
     </div>
   );
-}
+};
 
 export default Loader;

@@ -1,120 +1,89 @@
-const Review = require('../models/reviewModel');
+const Review = require("../models/reviewModel");
+const Movie = require("../models/movieModel");
 
-// Add a new review
-const addReview = async (req, res) => {
+// GET REVIEWS FOR A MOVIE
+exports.getMovieReviews = async (req, res) => {
+  try {
+    const { movieId } = req.params;
+    const reviews = await Review.find({ movieId }).sort({ createdAt: -1 });
+
+    const totalRatings = reviews.length;
+    const avgRating =
+      totalRatings > 0
+        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / totalRatings).toFixed(1)
+        : null;
+
+    res.json({
+      success: true,
+      totalRatings,
+      avgRating: avgRating ? Number(avgRating) : 8.5,
+      reviews,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// SUBMIT REVIEW
+exports.createReview = async (req, res) => {
   try {
     const { movieId, rating, reviewText } = req.body;
-    const userEmail = req.user?.email || req.body.userEmail;
+    const userEmail = req.user.email;
+    const username = req.user.username || userEmail.split("@")[0];
 
     if (!movieId || !rating || !reviewText) {
-      return res.status(400).json({
-        success: false,
-        message: 'movieId, rating, and reviewText are required'
-      });
+      return res.status(400).json({ success: false, message: "Please provide movieId, rating, and reviewText." });
     }
 
-    if (!userEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'userEmail is required'
-      });
+    const movie = await Movie.findById(movieId);
+    if (!movie) {
+      return res.status(404).json({ success: false, message: "Movie not found." });
     }
 
     const review = await Review.create({
       userEmail,
+      username,
       movieId,
       rating: Number(rating),
-      reviewText
+      reviewText,
     });
 
-    return res.status(201).json({
+    // Update movie average rating
+    const allReviews = await Review.find({ movieId });
+    const newAvg = (allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length).toFixed(1);
+    movie.rating = Number(newAvg);
+    movie.voteCount = allReviews.length;
+    await movie.save();
+
+    res.status(201).json({
       success: true,
-      message: 'Review added successfully',
-      data: review,
-      review
+      message: "Review submitted successfully!",
+      review,
+      updatedMovieRating: movie.rating,
     });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error adding review'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get all reviews for a movie
-const getReviewsByMovieId = async (req, res) => {
+// DELETE REVIEW
+exports.deleteReview = async (req, res) => {
   try {
-    const reviews = await Review.find({ movieId: req.params.movieId }).sort({ createdAt: -1 });
-    return res.status(200).json({
-      success: true,
-      data: reviews,
-      reviews
-    });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching reviews'
-    });
-  }
-};
-
-// Update an existing review
-const updateReview = async (req, res) => {
-  try {
-    const review = await Review.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const { reviewId } = req.params;
+    const review = await Review.findById(reviewId);
 
     if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: 'Review not found'
-      });
+      return res.status(404).json({ success: false, message: "Review not found." });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Review updated successfully',
-      data: review,
-      review
-    });
-  } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error updating review'
-    });
-  }
-};
-
-// Delete a review
-const deleteReview = async (req, res) => {
-  try {
-    const review = await Review.findByIdAndDelete(req.params.id);
-
-    if (!review) {
-      return res.status(404).json({
-        success: false,
-        message: 'Review not found'
-      });
+    // Owner or admin check
+    if (review.userEmail !== req.user.email && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Unauthorized to delete this review." });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Review deleted successfully'
-    });
+    await Review.findByIdAndDelete(reviewId);
+    res.json({ success: true, message: "Review deleted successfully." });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error deleting review'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
-};
-
-module.exports = {
-  addReview,
-  getReviewsByMovieId,
-  updateReview,
-  deleteReview
 };

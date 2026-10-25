@@ -1,189 +1,119 @@
-const mongoose = require('mongoose');
-const { v4: uuidv4 } = require('uuid');
-const Theatre = require('../models/theatreModel');
-const Show = require('../models/showModel');
+const Theatre = require("../models/theatreModel");
 
-// Helper to build flexible query matching either custom theatreId or MongoDB _id
-const buildTheatreQuery = (id) => {
-  const query = [{ theatreId: id }];
-  if (mongoose.isValidObjectId(id)) {
-    query.push({ _id: id });
+// Helper to generate default seat structures if not provided
+const generateDefaultSeatConfig = (tier) => {
+  if (tier === "balcony") {
+    return { rows: ["A", "B"], seatsPerRow: 10, totalSeats: 20 };
+  } else if (tier === "middle") {
+    return { rows: ["C", "D", "E", "F"], seatsPerRow: 12, totalSeats: 48 };
+  } else {
+    return { rows: ["G", "H"], seatsPerRow: 12, totalSeats: 24 };
   }
-  return { $or: query };
 };
 
-// Get all theatres with optional filter by adminEmail
-const getAllTheatres = async (req, res) => {
+// GET ALL THEATRES
+exports.getAllTheatres = async (req, res) => {
   try {
-    const filter = {};
-    if (req.query.adminEmail) {
-      filter.adminEmail = req.query.adminEmail;
-    }
-    const theatres = await Theatre.find(filter).sort({ createdAt: -1 });
-    return res.status(200).json({
-      success: true,
-      data: theatres,
-      theatres
-    });
+    const theatres = await Theatre.find().sort({ createdAt: -1 });
+    res.json({ success: true, count: theatres.length, theatres });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching theatres'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Get single theatre by theatreId or MongoDB _id
-const getTheatreById = async (req, res) => {
+// GET THEATRE BY ID
+exports.getTheatreById = async (req, res) => {
   try {
-    const paramId = req.params.theatreId || req.params.id;
-    const theatre = await Theatre.findOne(buildTheatreQuery(paramId));
+    const theatre = await Theatre.findOne({
+      $or: [{ theatreId: req.params.theatreId }, { _id: req.params.theatreId.match(/^[0-9a-fA-F]{24}$/) ? req.params.theatreId : null }],
+    });
     if (!theatre) {
-      return res.status(404).json({
-        success: false,
-        message: 'Theatre not found'
-      });
+      return res.status(404).json({ success: false, message: "Theatre not found." });
     }
-    return res.status(200).json({
-      success: true,
-      data: theatre,
-      theatre
-    });
+    res.json({ success: true, theatre });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error fetching theatre'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Add a new theatre with UUID theatreId
-const addTheatre = async (req, res) => {
+// CREATE THEATRE (Admin)
+exports.createTheatre = async (req, res) => {
   try {
-    const theatreId = uuidv4();
-    const adminEmail = req.user?.email || req.body.adminEmail || 'admin@imovies.com';
-
-    // Normalize nested balconySeats, middleSeats, lowerSeats from request
-    const balconyRows = Number(req.body.balconySeats?.rows ?? req.body.balconyRows) || 3;
-    const balconyCols = Number(req.body.balconySeats?.cols ?? req.body.balconyCols) || 10;
-    const middleRows = Number(req.body.middleSeats?.rows ?? req.body.middleRows) || 5;
-    const middleCols = Number(req.body.middleSeats?.cols ?? req.body.middleCols) || 12;
-    const lowerRows = Number(req.body.lowerSeats?.rows ?? req.body.lowerRows) || 4;
-    const lowerCols = Number(req.body.lowerSeats?.cols ?? req.body.lowerCols) || 10;
-
-    const balconySeats = { rows: balconyRows, cols: balconyCols };
-    const middleSeats = { rows: middleRows, cols: middleCols };
-    const lowerSeats = { rows: lowerRows, cols: lowerCols };
-
-    const totalSeats = (balconyRows * balconyCols) + (middleRows * middleCols) + (lowerRows * lowerCols);
-
-    const theatreData = {
-      ...req.body,
+    const {
+      theatreName,
       theatreId,
-      adminEmail,
-      theatreName: req.body.theatreName ? req.body.theatreName.trim() : 'iMovies Cineplex',
-      location: req.body.location ? req.body.location.trim() : 'Downtown',
-      balconySeatPrice: Number(req.body.balconySeatPrice) || 250,
-      middleSeatPrice: Number(req.body.middleSeatPrice) || 180,
-      lowerSeatPrice: Number(req.body.lowerSeatPrice) || 120,
+      location,
+      balconySeatPrice,
+      middleSeatPrice,
+      lowerSeatPrice,
       balconySeats,
       middleSeats,
       lowerSeats,
-      balconyRows,
-      balconyCols,
-      middleRows,
-      middleCols,
-      lowerRows,
-      lowerCols,
-      totalSeats
-    };
+      amenities,
+    } = req.body;
 
-    const theatre = new Theatre(theatreData);
-    await theatre.save();
+    const generatedId = theatreId || "th-" + Date.now().toString(36);
 
-    return res.status(201).json({
+    const existing = await Theatre.findOne({ theatreId: generatedId });
+    if (existing) {
+      return res.status(400).json({ success: false, message: "Theatre ID already exists." });
+    }
+
+    const theatre = await Theatre.create({
+      theatreName,
+      theatreId: generatedId,
+      location,
+      balconySeatPrice: Number(balconySeatPrice),
+      middleSeatPrice: Number(middleSeatPrice),
+      lowerSeatPrice: Number(lowerSeatPrice),
+      balconySeats: balconySeats || generateDefaultSeatConfig("balcony"),
+      middleSeats: middleSeats || generateDefaultSeatConfig("middle"),
+      lowerSeats: lowerSeats || generateDefaultSeatConfig("lower"),
+      amenities: Array.isArray(amenities) ? amenities : ["Dolby Atmos", "4K RGB Laser", "Food Court"],
+    });
+
+    res.status(201).json({
       success: true,
-      message: 'Theatre created successfully',
-      data: theatre,
-      theatre
+      message: "Theatre created successfully!",
+      theatre,
     });
   } catch (error) {
-    console.error('[theatreController] addTheatre error:', error);
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error creating theatre'
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Update theatre by theatreId or _id
-const updateTheatre = async (req, res) => {
+// UPDATE THEATRE (Admin)
+exports.updateTheatre = async (req, res) => {
   try {
-    const paramId = req.params.theatreId || req.params.id;
     const theatre = await Theatre.findOneAndUpdate(
-      buildTheatreQuery(paramId),
+      { $or: [{ theatreId: req.params.theatreId }, { _id: req.params.theatreId.match(/^[0-9a-fA-F]{24}$/) ? req.params.theatreId : null }] },
       req.body,
       { new: true, runValidators: true }
     );
 
     if (!theatre) {
-      return res.status(404).json({
-        success: false,
-        message: 'Theatre not found'
-      });
+      return res.status(404).json({ success: false, message: "Theatre not found." });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'Theatre updated successfully',
-      data: theatre,
-      theatre
-    });
+    res.json({ success: true, message: "Theatre updated successfully!", theatre });
   } catch (error) {
-    return res.status(400).json({
-      success: false,
-      message: error.message || 'Error updating theatre'
-    });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// Delete theatre by theatreId or _id
-const deleteTheatre = async (req, res) => {
+// DELETE THEATRE (Admin)
+exports.deleteTheatre = async (req, res) => {
   try {
-    const paramId = req.params.theatreId || req.params.id;
-    const theatre = await Theatre.findOneAndDelete(buildTheatreQuery(paramId));
+    const theatre = await Theatre.findOneAndDelete({
+      $or: [{ theatreId: req.params.theatreId }, { _id: req.params.theatreId.match(/^[0-9a-fA-F]{24}$/) ? req.params.theatreId : null }],
+    });
 
     if (!theatre) {
-      return res.status(404).json({
-        success: false,
-        message: 'Theatre not found'
-      });
+      return res.status(404).json({ success: false, message: "Theatre not found." });
     }
 
-    // Clean up any shows associated with this theatre
-    await Show.deleteMany({
-      $or: [
-        { theatreId: theatre.theatreId },
-        { theatreId: String(theatre._id) }
-      ]
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: 'Theatre deleted successfully'
-    });
+    res.json({ success: true, message: "Theatre deleted successfully!" });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: error.message || 'Error deleting theatre'
-    });
+    res.status(500).json({ success: false, message: error.message });
   }
-};
-
-module.exports = {
-  getAllTheatres,
-  getTheatreById,
-  addTheatre,
-  updateTheatre,
-  deleteTheatre
 };

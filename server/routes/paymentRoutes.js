@@ -1,14 +1,13 @@
-const router = require('express').Router();
-const {
-  createOrder,
-  verifyPayment,
-  getPaymentConfig
-} = require('../controllers/paymentController');
-const fetchUser = require('../middlewares/fetchUser');
+const express = require("express");
+const router = express.Router();
+const paymentController = require("../controllers/paymentController");
+const { fetchUser } = require("../middlewares/fetchUser");
 
-// Payment routes
-router.get('/config', getPaymentConfig);
-router.post('/create-order', fetchUser, createOrder);
-router.post('/verify', fetchUser, verifyPayment);
+// Public key retrieval
+router.get("/get-key", paymentController.getKey);
+
+// 5-Step Razorpay Checkout flow
+router.post("/create-order", fetchUser, paymentController.createOrder);
+router.post("/verify", fetchUser, paymentController.verifyPayment);
 
 module.exports = router;
