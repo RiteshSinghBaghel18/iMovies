@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import useFetch from "../hooks/useFetch";
 import api from "../utils/api";
@@ -44,6 +44,7 @@ const parseCastMember = (actor) => {
 };
 
 const MovieDetails = () => {
+  const iframeRef = useRef(null);
   const { movieId } = useParams();
   const { isAuthenticated } = useAuth();
 
@@ -61,6 +62,37 @@ const MovieDetails = () => {
   // Trailer modal state
   const [showTrailer, setShowTrailer] = useState(false);
   const [trailerFailed, setTrailerFailed] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+
+  // Real-time YouTube audio toggle via iframe postMessage
+  const toggleAudio = () => {
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          JSON.stringify({
+            event: "command",
+            func: nextMuted ? "mute" : "unMute",
+            args: [],
+          }),
+          "*"
+        );
+        if (!nextMuted) {
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({
+              event: "command",
+              func: "setVolume",
+              args: [100],
+            }),
+            "*"
+          );
+        }
+      } catch (err) {
+        console.warn("Could not postMessage to trailer iframe:", err);
+      }
+    }
+  };
 
   const movie = movieData?.movie;
   const reviews = reviewData?.reviews || [];
@@ -158,7 +190,8 @@ const MovieDetails = () => {
           {getYouTubeVideoId(movie.trailerUrl) && !trailerFailed ? (
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYouTubeVideoId(movie.trailerUrl)}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&playsinline=1`}
+                ref={iframeRef}
+                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYouTubeVideoId(movie.trailerUrl)}&enablejsapi=1&origin=${typeof window !== "undefined" ? window.location.origin : ""}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&playsinline=1`}
                 title={`${movie.movieName} Ambient Trailer`}
                 className="w-[140%] h-[140%] -ml-[20%] -mt-[10%] object-cover opacity-55 scale-105 pointer-events-none"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

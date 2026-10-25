@@ -55,6 +55,7 @@ const SeatMap = () => {
   // User's temporary selection
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [isLockedByMe, setIsLockedByMe] = useState(false);
+  const [isLocking, setIsLocking] = useState(false);
   const [lockExpiresAt, setLockExpiresAt] = useState(null);
   const [timeLeft, setTimeLeft] = useState("");
 
@@ -540,9 +541,21 @@ const SeatMap = () => {
 
               {/* Selected Seats Listing */}
               <div>
-                <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2">
-                  Selected Seats ({selectedSeats.length})
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider">
+                    Selected Seats ({selectedSeats.length})
+                  </p>
+                  {selectedSeats.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSeats([])}
+                      className="text-[11px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 transition-colors hover:underline cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Clear All</span>
+                    </button>
+                  )}
+                </div>
                 {selectedSeats.length === 0 ? (
                   <p className="text-xs text-[#a1a1aa] italic py-2">
                     Click on available seats on the map above to select your reservation.
@@ -554,12 +567,15 @@ const SeatMap = () => {
                       return (
                         <div
                           key={seatId}
-                          className="px-2.5 py-1 rounded-lg bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30 text-xs font-bold flex items-center gap-1.5"
+                          onClick={() => setSelectedSeats(prev => prev.filter(s => s !== seatId))}
+                          title="Click to remove seat"
+                          className="px-2.5 py-1 rounded-lg bg-[#76b900]/20 hover:bg-rose-500/20 text-[#76b900] hover:text-rose-400 border border-[#76b900]/30 hover:border-rose-500/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all group active:scale-95"
                         >
                           <span>{seatId}</span>
                           <span className="text-[10px] text-slate-300 font-normal">
                             (₹{seat?.price || 200})
                           </span>
+                          <span className="text-[10px] text-rose-400 font-bold opacity-0 group-hover:opacity-100">✕</span>
                         </div>
                       );
                     })}
@@ -589,15 +605,48 @@ const SeatMap = () => {
                 </div>
               </div>
 
-              {/* Action Button */}
+              {/* Interactive Lock & Checkout Button */}
               <button
                 type="button"
                 onClick={handleLockAndProceed}
-                disabled={selectedSeats.length === 0 || isShowEnded}
-                className="w-full py-4 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-xl shadow-[#76b900]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                disabled={selectedSeats.length === 0 || isShowEnded || isLocking}
+                className={`w-full py-4 px-5 rounded-2xl font-black text-sm transition-all duration-200 shadow-xl flex items-center justify-center gap-2 group cursor-pointer ${
+                  isShowEnded
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed opacity-60"
+                    : isLocking
+                    ? "bg-[#76b900]/70 text-slate-950 cursor-wait"
+                    : selectedSeats.length === 0
+                    ? "bg-[#18181f] text-[#a1a1aa] border border-[#27272a] hover:border-[#76b900]/40"
+                    : "bg-gradient-to-r from-[#76b900] via-[#8cd600] to-[#76b900] bg-[length:200%_auto] hover:bg-right text-slate-950 shadow-[#76b900]/30 hover:shadow-[#76b900]/50 hover:scale-[1.02] active:scale-95"
+                }`}
               >
-                <Lock className="w-4 h-4" />
-                <span>{isShowEnded ? "Showtime Closed" : "Lock Seats & Checkout"}</span>
+                {isShowEnded ? (
+                  <span className="flex items-center gap-2">
+                    <XCircle className="w-4 h-4 text-rose-400" />
+                    <span>Showtime Ended • Booking Closed</span>
+                  </span>
+                ) : isLocking ? (
+                  <span className="flex items-center gap-2 text-slate-950">
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-950" />
+                    <span>Locking Seats in Real-Time...</span>
+                  </span>
+                ) : selectedSeats.length === 0 ? (
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-[#76b900] animate-pulse" />
+                    <span>Select Seats on Map to Continue</span>
+                  </span>
+                ) : (
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-slate-950 animate-pulse" />
+                      <span>Lock {selectedSeats.length} Seat${selectedSeats.length > 1 ? "s" : ""} & Proceed</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-xl text-slate-950 font-black text-xs">
+                      <span>₹{totalSeatPrice + Math.round(totalSeatPrice * 0.05) + Math.round(totalSeatPrice * 0.025)}</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+                )}
               </button>
 
               <p className="text-[11px] text-[#a1a1aa] text-center leading-relaxed">
@@ -643,7 +692,7 @@ const SeatMap = () => {
       seat.lockExpiresAt &&
       new Date(seat.lockExpiresAt) > new Date();
 
-    let btnClass = "seat w-8 h-8 rounded-lg text-[10px] font-bold flex items-center justify-center cursor-pointer border transition-all ";
+    let btnClass = "seat w-8 h-8 rounded-lg text-[10px] font-bold flex items-center justify-center cursor-pointer border transition-all duration-150 active:scale-80 select-none ";
 
     if (isBooked) {
       btnClass += "bg-[#09090b] border-[#141d2c] text-slate-600 opacity-40 cursor-not-allowed";

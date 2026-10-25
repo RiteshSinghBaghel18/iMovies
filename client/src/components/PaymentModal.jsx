@@ -20,6 +20,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
   const { user } = useAuth();
   const [processing, setProcessing] = useState(false);
   const [razorpayKey, setRazorpayKey] = useState("");
+  const [selectedMethod, setSelectedMethod] = useState("UPI / QR");
 
   const convenienceFee = Math.round(totalSeatPrice * 0.05);
   const taxes = Math.round(totalSeatPrice * 0.025);
@@ -225,34 +226,73 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
             </div>
           </div>
 
-          {/* Direct Payment Channel Info */}
-          <div className="p-4 rounded-xl bg-[#09090b] border border-[#27272a] flex items-start gap-3">
-            <Zap className="w-5 h-5 text-[#76b900] flex-shrink-0 mt-0.5" />
-            <div className="text-xs space-y-1">
-              <p className="text-white font-semibold">Official Razorpay Test Gateway</p>
-              <p className="text-[#a1a1aa]">
-                Proceed directly to the Razorpay modal to pay using <span className="text-slate-200 font-medium">UPI (Google Pay, PhonePe, Paytm, QR)</span>, <span className="text-slate-200 font-medium">Credit/Debit Cards</span>, <span className="text-slate-200 font-medium">Net Banking</span>, or <span className="text-slate-200 font-medium">Wallets</span>.
-              </p>
+          {/* Interactive Payment Method Selector */}
+          <div>
+            <label className="block text-xs font-semibold text-[#a1a1aa] uppercase tracking-wider mb-2.5">
+              Select Preferred Payment Channel
+            </label>
+            <div className="grid grid-cols-2 gap-2.5">
+              {[
+                { id: "UPI / QR", label: "UPI & QR", sub: "GPay, PhonePe, Paytm", icon: Smartphone },
+                { id: "Cards", label: "Cards", sub: "Visa, Mastercard, RuPay", icon: CreditCard },
+                { id: "Net Banking", label: "Net Banking", sub: "All Major Banks", icon: ShieldCheck },
+                { id: "Wallets", label: "Wallets / EMI", sub: "Paytm, Mobikwik & more", icon: Zap },
+              ].map((item) => {
+                const IconComponent = item.icon;
+                const isSelected = selectedMethod === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSelectedMethod(item.id)}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-3 active:scale-95 ${
+                      isSelected
+                        ? "bg-[#76b900]/15 border-[#76b900] text-white shadow-md shadow-[#76b900]/20"
+                        : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:border-[#76b900]/50 hover:text-white"
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      isSelected ? "bg-[#76b900] text-slate-950" : "bg-[#121216] text-[#76b900]"
+                    }`}>
+                      <IconComponent className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{item.label}</p>
+                      <p className="text-[10px] text-[#a1a1aa] truncate">{item.sub}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Action Button: Single Direct Razorpay Trigger */}
+          {/* Action Button: Interactive Razorpay Payment Trigger */}
           <div className="space-y-3 pt-2">
             <button
               onClick={handleRazorpayPayment}
               disabled={processing}
-              className="w-full py-4 px-6 rounded-xl font-black text-slate-950 bg-[#76b900] hover:bg-[#8cd600] transition-all shadow-lg shadow-[#76b900]/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group text-base"
+              className={`w-full py-4 px-6 rounded-2xl font-black text-slate-950 transition-all duration-200 shadow-xl shadow-[#76b900]/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group text-base cursor-pointer active:scale-95 ${
+                processing
+                  ? "bg-[#76b900]/70 cursor-wait"
+                  : "bg-gradient-to-r from-[#76b900] via-[#8cd600] to-[#76b900] bg-[length:200%_auto] hover:bg-right hover:scale-[1.02] hover:shadow-[#76b900]/50"
+              }`}
             >
               {processing ? (
-                <>
+                <div className="flex items-center gap-2">
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Contacting Payment Gateway...</span>
-                </>
+                  <span>Connecting Secure Razorpay Gateway...</span>
+                </div>
               ) : (
-                <>
-                  <Lock className="w-4 h-4" />
-                  <span>Pay ₹{grandTotal} with Razorpay</span>
-                </>
+                <div className="flex items-center justify-between w-full px-2">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-slate-950" />
+                    <span>Pay ₹${grandTotal} with Razorpay</span>
+                  </div>
+                  <span className="flex items-center gap-1 font-extrabold text-xs bg-black/20 px-2.5 py-1 rounded-lg">
+                    <span>${selectedMethod}</span>
+                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </div>
               )}
             </button>
 
