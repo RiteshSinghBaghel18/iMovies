@@ -643,7 +643,7 @@ const SeatMap = () => {
                   <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-slate-950 animate-pulse" />
-                      <span>Lock {selectedSeats.length} Seat${selectedSeats.length > 1 ? "s" : ""} & Proceed</span>
+                      <span>Lock {selectedSeats.length} {selectedSeats.length > 1 ? "Seats" : "Seat"} & Proceed</span>
                     </div>
                     <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-xl text-slate-950 font-black text-xs">
                       <span>₹{totalSeatPrice + Math.round(totalSeatPrice * 0.05) + Math.round(totalSeatPrice * 0.025)}</span>

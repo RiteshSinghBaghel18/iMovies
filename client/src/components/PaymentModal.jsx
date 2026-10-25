@@ -287,10 +287,10 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
                 <div className="flex items-center justify-between w-full px-2">
                   <div className="flex items-center gap-2">
                     <Lock className="w-4 h-4 text-slate-950" />
-                    <span>Pay ₹${grandTotal} with Razorpay</span>
+                    <span>Pay ₹{grandTotal} with Razorpay</span>
                   </div>
                   <span className="flex items-center gap-1 font-extrabold text-xs bg-black/20 px-2.5 py-1 rounded-lg">
-                    <span>${selectedMethod}</span>
+                    <span>{selectedMethod}</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </div>
