@@ -2,7 +2,7 @@
 
 iMovies is a full-stack movie ticketing application built with the MERN stack (MongoDB, Express, React, Node.js). It provides real-time seat selection via WebSockets, online booking workflows, digital ticket passes with QR codes, and an administrative dashboard to manage movies, cinema halls, and showtimes.
 
-The user interface is designed around an NVIDIA Green (#76b900), deep black, and clean white color palette, with support for both dark and light display modes.
+The user interface is designed around an Green (#76b900), deep black, and clean white color palette, with support for both dark and light display modes.
 
 ---
 
