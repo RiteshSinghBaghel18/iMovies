@@ -176,8 +176,8 @@ mongoose
     if (process.env.TMDB_API_KEY) {
       console.log("[TMDb] 🎬 Starting initial TMDB live movie sync...");
       syncTMDBMovies({
-        endpoints: ["/movie/now_playing", "/movie/popular", "/movie/top_rated"],
-        pages: 2,
+        endpoints: ["/movie/now_playing", "/movie/upcoming"],
+        pages: 1,
         fetchDetail: true,
       })
         .then(({ synced, errors }) => {

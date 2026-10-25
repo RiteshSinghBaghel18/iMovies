@@ -35,7 +35,7 @@ const movieSchema = new mongoose.Schema(
       trim: true,
     },
     duration: {
-      type: mongoose.Schema.Types.Mixed, // Accepts String (e.g. "2h 35m") or Number (minutes)
+      type: mongoose.Schema.Types.Mixed,
       required: [true, "Duration is required"],
     },
     certification: {
@@ -73,16 +73,30 @@ const movieSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // TMDB Integration fields
     tmdbId: {
       type: Number,
       unique: true,
-      sparse: true, // allows multiple docs without tmdbId (manually-added movies)
+      sparse: true,
       index: true,
     },
     tmdbPopularity: {
       type: Number,
       default: 0,
+    },
+    category: {
+      type: String,
+      default: "now_playing", // "now_playing" | "upcoming" | "custom"
+      index: true,
+    },
+    isAdminAdded: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    isCustom: {
+      type: Boolean,
+      default: false,
+      index: true,
     },
   },
   {
@@ -90,8 +104,6 @@ const movieSchema = new mongoose.Schema(
   }
 );
 
-// Index for search optimization — use 'none' language override so non-English
-// field values (e.g. "Korean", "Tamil") don't confuse the text analyser.
 movieSchema.index(
   { movieName: "text", description: "text" },
   { default_language: "none", language_override: "none" }

@@ -2,21 +2,14 @@
  * TMDB Service — server/services/tmdbService.js
  *
  * Fetches live movie data from The Movie Database (TMDb) API v3 and
- * upserts the results into the local MongoDB `movies` collection so that
- * the entire iMovies booking pipeline (Shows → Bookings → Seats) keeps
- * working with stable Mongoose _id references.
+ * upserts the results into the local MongoDB `movies` collection.
  *
- * Key TMDB endpoints used:
- *  • /movie/now_playing  – theatrically released, paginated
- *  • /movie/popular      – global trending / popular titles
- *  • /movie/{id}         – full movie details (runtime, genres, cast, etc.)
- *  • /movie/{id}/credits – cast & director
- *  • /movie/{id}/videos  – YouTube trailers
+ * Exclusively queries:
+ *  • /movie/now_playing  – In theatres currently (category: "now_playing")
+ *  • /movie/upcoming     – Arriving in theatres soon (category: "upcoming")
  *
- * Environment variables required (server/.env):
- *   TMDB_API_KEY  – your v3 API key
- *   TMDB_BASE_URL – https://api.themoviedb.org/3   (default)
- *   TMDB_IMAGE_BASE – https://image.tmdb.org/t/p  (default)
+ * Never alters or deletes admin-added movies.
+ * Never stores or tracks user search terms or views.
  */
 
 const axios = require("axios");
@@ -42,8 +35,22 @@ if (!TMDB_API_KEY) {
 const tmdb = axios.create({
   baseURL: TMDB_BASE_URL,
   params: { api_key: TMDB_API_KEY },
-  timeout: 20_000,
+  timeout: 25_000,
 });
+
+/**
+ * Resilient GET helper with automatic retries for transient socket resets.
+ */
+const tmdbGet = async (url, config = {}, retries = 3, delayMs = 1000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await tmdb.get(url, config);
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, delayMs * attempt));
+    }
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Genre ID → human-readable name mapping (TMDb v3 movie genre IDs)
@@ -106,14 +113,14 @@ const formatDuration = (minutes) => {
  * Fetch full detail + credits + videos for a single TMDb movie.
  * Returns null on error so the batch can continue.
  */
-const fetchMovieDetail = async (tmdbId) => {
+const fetchMovieDetail = async (tmdbId, category = "now_playing") => {
   try {
     const [detailRes, creditsRes, videosRes] = await Promise.all([
-      tmdb.get(`/movie/${tmdbId}`, {
+      tmdbGet(`/movie/${tmdbId}`, {
         params: { append_to_response: "release_dates" },
       }),
-      tmdb.get(`/movie/${tmdbId}/credits`),
-      tmdb.get(`/movie/${tmdbId}/videos`),
+      tmdbGet(`/movie/${tmdbId}/credits`),
+      tmdbGet(`/movie/${tmdbId}/videos`),
     ]);
 
     const d = detailRes.data;
@@ -193,6 +200,9 @@ const fetchMovieDetail = async (tmdbId) => {
       rating:    d.vote_average ? parseFloat(d.vote_average.toFixed(1)) : 7.0,
       voteCount: d.vote_count  || 0,
       tmdbPopularity: d.popularity || 0,
+      category,
+      isAdminAdded: false,
+      isCustom: false,
     };
   } catch (err) {
     console.error(`[TMDb] Failed to fetch detail for id=${tmdbId}: ${err.message}`);
@@ -202,11 +212,11 @@ const fetchMovieDetail = async (tmdbId) => {
 
 /**
  * Fetch a page of movies from the given TMDB list endpoint
- * (e.g. "/movie/now_playing", "/movie/popular", "/movie/top_rated").
+ * (e.g. "/movie/now_playing", "/movie/upcoming").
  */
 const fetchMovieList = async (endpoint, page = 1) => {
   try {
-    const res = await tmdb.get(endpoint, {
+    const res = await tmdbGet(endpoint, {
       params: { page, region: "US", language: "en-US" },
     });
     return res.data.results || [];
@@ -222,10 +232,21 @@ const fetchMovieList = async (endpoint, page = 1) => {
 
 /**
  * Upsert a single enriched TMDB movie document into MongoDB.
- * Uses `tmdbId` as the unique dedup key.
+ * Never overwrites admin-added or custom movies!
  */
 const upsertMovieToDB = async (movieData) => {
   try {
+    const existing = await Movie.findOne({
+      $or: [
+        ...(movieData.tmdbId ? [{ tmdbId: movieData.tmdbId }] : []),
+        { movieName: movieData.movieName },
+      ],
+    });
+
+    if (existing && (existing.isAdminAdded || existing.isCustom)) {
+      return existing;
+    }
+
     const updated = await Movie.findOneAndUpdate(
       { tmdbId: movieData.tmdbId },
       { $set: movieData },
@@ -239,18 +260,18 @@ const upsertMovieToDB = async (movieData) => {
 };
 
 /**
- * Main sync function. Call this at server start-up or via the admin
- * "Sync TMDB" endpoint.
+ * Main sync function. Call this at server start-up or via the admin "Sync TMDB" endpoint.
+ * Fetches ONLY currently in theatres (/movie/now_playing) and upcoming (/movie/upcoming).
  *
  * @param {object} opts
  * @param {string[]} opts.endpoints   – TMDB list endpoints to query
- * @param {number}   opts.pages       – number of pages per endpoint (20 movies each)
+ * @param {number}   opts.pages       – number of pages per endpoint (default: 1 page = ~20 movies)
  * @param {boolean}  opts.fetchDetail – fetch full detail + credits + videos per movie
  * @returns {{ synced: number, errors: number }}
  */
 const syncTMDBMovies = async ({
-  endpoints = ["/movie/now_playing", "/movie/popular", "/movie/top_rated"],
-  pages     = 2,
+  endpoints = ["/movie/now_playing", "/movie/upcoming"],
+  pages     = 1,
   fetchDetail = true,
 } = {}) => {
   if (!TMDB_API_KEY) {
@@ -258,37 +279,39 @@ const syncTMDBMovies = async ({
     return { synced: 0, errors: 0 };
   }
 
-  console.log(`[TMDb] Starting live sync – endpoints: ${endpoints.join(", ")} | pages: ${pages}`);
+  console.log(`[TMDb] Starting live sync (In Theatres & Upcoming) – endpoints: ${endpoints.join(", ")} | pages: ${pages}`);
 
-  // Collect unique TMDB IDs from all list pages
   const seen = new Set();
+  const categoryMap = new Map();
   const tmdbIds = [];
 
   for (const endpoint of endpoints) {
+    const category = endpoint.includes("upcoming") ? "upcoming" : "now_playing";
     for (let p = 1; p <= pages; p++) {
       const results = await fetchMovieList(endpoint, p);
       results.forEach((m) => {
         if (m.id && !seen.has(m.id)) {
           seen.add(m.id);
+          categoryMap.set(m.id, category);
           tmdbIds.push(m.id);
         }
       });
     }
   }
 
-  console.log(`[TMDb] Discovered ${tmdbIds.length} unique movie IDs. Enriching & syncing...`);
+  console.log(`[TMDb] Discovered ${tmdbIds.length} unique in-theatre & upcoming movie IDs. Enriching & syncing...`);
 
   let synced = 0;
   let errors = 0;
 
-  // Process in batches of 5 to respect rate limits
-  const BATCH = 5;
+  // Process in batches of 3 with slight delay to ensure smooth socket connections
+  const BATCH = 3;
   for (let i = 0; i < tmdbIds.length; i += BATCH) {
     const batch = tmdbIds.slice(i, i + BATCH);
 
     const enriched = fetchDetail
-      ? await Promise.all(batch.map(fetchMovieDetail))
-      : batch.map((id) => ({ tmdbId: id }));
+      ? await Promise.all(batch.map((id) => fetchMovieDetail(id, categoryMap.get(id) || "now_playing")))
+      : batch.map((id) => ({ tmdbId: id, category: categoryMap.get(id) || "now_playing" }));
 
     for (const movieData of enriched) {
       if (!movieData) { errors++; continue; }
@@ -296,9 +319,8 @@ const syncTMDBMovies = async ({
       if (saved) synced++; else errors++;
     }
 
-    // Small delay to avoid hammering TMDB (rate limit: 40 req/10s)
     if (i + BATCH < tmdbIds.length) {
-      await new Promise((r) => setTimeout(r, 300));
+      await new Promise((r) => setTimeout(r, 400));
     }
   }
 
@@ -307,49 +329,23 @@ const syncTMDBMovies = async ({
 };
 
 /**
- * Lightweight sync: only re-fetch now_playing (1 page, no detail calls).
- * Used by the periodic cron job to keep new releases flowing.
+ * Lightweight sync: only re-fetch now_playing & upcoming (1 page each).
+ * Used by periodic cron job to keep in-theatre and upcoming titles fresh.
  */
 const quickSync = () =>
   syncTMDBMovies({
-    endpoints:   ["/movie/now_playing", "/movie/popular"],
+    endpoints:   ["/movie/now_playing", "/movie/upcoming"],
     pages:       1,
     fetchDetail: true,
   });
 
 /**
- * Search TMDB for movies matching a query string and upsert results.
- * Called from the movie controller when a search term is provided.
+ * Search TMDB for movies matching a query string.
+ * Strictly does NOT upsert to MongoDB to respect user privacy and avoid database pollution.
  */
 const searchAndSyncTMDB = async (query) => {
-  if (!TMDB_API_KEY || !query) return [];
-
-  try {
-    const res = await tmdb.get("/search/movie", {
-      params: { query, language: "en-US", page: 1, include_adult: false },
-    });
-
-    const results = res.data.results?.slice(0, 10) || [];
-    const enriched = await Promise.all(results.map((m) => fetchMovieDetail(m.id)));
-
-    const saved = [];
-    for (const m of enriched) {
-      if (!m) continue;
-      const doc = await upsertMovieToDB(m);
-      if (doc) saved.push(doc);
-    }
-    return saved;
-  } catch (err) {
-    console.error(`[TMDb] searchAndSyncTMDB("${query}") failed: ${err.message}`);
-    return [];
-  }
+  return [];
 };
-
-// ---------------------------------------------------------------------------
-// Add tmdbId field to the Movie schema if not already present
-// ---------------------------------------------------------------------------
-// (We patch it here so the service is self-contained; the schema itself
-//  is updated separately.)
 
 module.exports = {
   syncTMDBMovies,

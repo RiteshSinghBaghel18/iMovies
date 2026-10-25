@@ -1,48 +1,77 @@
 const Movie = require("../models/movieModel");
-const { searchAndSyncTMDB } = require("../services/tmdbService");
 
-// GET ALL MOVIES (with filters and search)
+// GET ALL MOVIES (Strictly: Currently In Theatres, Admin Added, Upcoming)
 exports.getAllMovies = async (req, res) => {
   try {
-    const { search, q, genre, language, sort } = req.query;
-    const query = {};
-
+    const { search, q, genre, language, sort, category } = req.query;
     const searchQuery = search || q;
 
-    // If a search query is provided, trigger a live TMDB search-and-sync
-    // in the background before querying MongoDB, so results stay fresh.
+    const andConditions = [];
+
+    // 1. Theatrical / Category Filter (Default: In Theatres, Admin Added, and Upcoming only)
+    if (category && category !== "All") {
+      if (category === "admin" || category === "custom") {
+        andConditions.push({ $or: [{ isAdminAdded: true }, { isCustom: true }] });
+      } else if (category === "now_playing" || category === "theatre") {
+        andConditions.push({
+          $or: [
+            { category: "now_playing" },
+            { isAdminAdded: true },
+            { isCustom: true },
+          ],
+        });
+      } else if (category === "upcoming") {
+        andConditions.push({ category: "upcoming" });
+      } else {
+        andConditions.push({ category });
+      }
+    } else {
+      // Default: Only load movies that are currently in theatres, admin added, or upcoming
+      andConditions.push({
+        $or: [
+          { isAdminAdded: true },
+          { isCustom: true },
+          { category: "now_playing" },
+          { category: "upcoming" },
+        ],
+      });
+    }
+
+    // 2. Search Filter (Database query only, NEVER saved to database or tracked)
     if (searchQuery) {
-      searchAndSyncTMDB(searchQuery).catch((e) =>
-        console.error("[MovieController] Background TMDB search failed:", e.message)
-      );
-
-      query.$or = [
-        { movieName: { $regex: searchQuery, $options: "i" } },
-        { description: { $regex: searchQuery, $options: "i" } },
-        { genres: { $in: [new RegExp(searchQuery, "i")] } },
-        { director: { $regex: searchQuery, $options: "i" } },
-        { cast: { $in: [new RegExp(searchQuery, "i")] } },
-      ];
+      andConditions.push({
+        $or: [
+          { movieName: { $regex: searchQuery, $options: "i" } },
+          { description: { $regex: searchQuery, $options: "i" } },
+          { genres: { $in: [new RegExp(searchQuery, "i")] } },
+          { director: { $regex: searchQuery, $options: "i" } },
+          { cast: { $in: [new RegExp(searchQuery, "i")] } },
+        ],
+      });
     }
 
+    // 3. Genre Filter
     if (genre && genre !== "All") {
-      query.genres = { $in: [genre] };
+      andConditions.push({ genres: { $in: [genre] } });
     }
 
+    // 4. Language Filter
     if (language && language !== "All") {
-      query.language = { $regex: new RegExp(`^${language}$`, "i") };
+      andConditions.push({ language: { $regex: new RegExp(`^${language}$`, "i") } });
     }
 
-    // Sort options — default: newly added movies at top (createdAt / _id desc)
-    let sortOption = { createdAt: -1, _id: -1 };
-    if (sort === "popularity") sortOption = { tmdbPopularity: -1, releaseDate: -1 };
-    else if (sort === "rating") sortOption = { rating: -1 };
-    else if (sort === "name") sortOption = { movieName: 1 };
-    else if (sort === "date") sortOption = { releaseDate: -1, createdAt: -1 };
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
+
+    // Sort options: Admin added movies ALWAYS at top!
+    let sortOption = { isAdminAdded: -1, isCustom: -1, createdAt: -1, _id: -1 };
+    if (sort === "popularity") sortOption = { isAdminAdded: -1, isCustom: -1, tmdbPopularity: -1, releaseDate: -1 };
+    else if (sort === "rating") sortOption = { isAdminAdded: -1, isCustom: -1, rating: -1 };
+    else if (sort === "name") sortOption = { isAdminAdded: -1, isCustom: -1, movieName: 1 };
+    else if (sort === "date") sortOption = { isAdminAdded: -1, isCustom: -1, releaseDate: -1, createdAt: -1 };
 
     const movies = await Movie.find(query).sort(sortOption);
 
-    // Distinct genres and languages for UI filter dropdowns
+    // Distinct genres and languages for UI dropdowns
     const allGenres    = await Movie.distinct("genres");
     const allLanguages = await Movie.distinct("language");
 
@@ -88,6 +117,7 @@ exports.createMovie = async (req, res) => {
       cast,
       director,
       rating,
+      category,
     } = req.body;
 
     const parsedGenres = Array.isArray(genres)
@@ -116,6 +146,9 @@ exports.createMovie = async (req, res) => {
       cast: parsedCast,
       director: director || "Unknown",
       rating: rating ? Number(rating) : 8.0,
+      category: category || "custom",
+      isAdminAdded: true,
+      isCustom: true,
     });
 
     res.status(201).json({
