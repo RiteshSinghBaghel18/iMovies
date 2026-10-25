@@ -97,7 +97,7 @@ The user interface is designed around an Green (#76b900), deep black, and clean 
    ```bash
    npm run dev
    ```
-4. Open your browser and navigate to `http://localhost:5173`.
+4. Open your browser and navigate to `i-movies-kappa.vercel.app`.
 
 ---
 
