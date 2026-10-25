@@ -12,30 +12,14 @@ import {
   Star
 } from "lucide-react";
 import useFetch from "../hooks/useFetch";
-
-// Check if a movie is released
-const isMovieReleased = (movie) => {
-  if (!movie.releaseDate) return true;
-  const release = new Date(movie.releaseDate);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  return release <= today;
-};
+import { isUpcomingMovie } from "../utils/movieCategory";
 
 const Landing = () => {
   const { data } = useFetch("/movie");
   const allMovies = data?.movies || [];
 
-  // Partition movies into In Theatres vs Upcoming
-  const inTheatresMovies = allMovies.filter((m) => {
-    if (m.isAdminAdded || m.isCustom) return isMovieReleased(m);
-    return m.category === "now_playing" || isMovieReleased(m);
-  }).slice(0, 4);
-
-  const upcomingMovies = allMovies.filter((m) => {
-    if (m.isAdminAdded || m.isCustom) return !isMovieReleased(m);
-    return m.category === "upcoming" || !isMovieReleased(m);
-  }).slice(0, 4);
+  const inTheatresMovies = allMovies.filter((m) => !isUpcomingMovie(m)).slice(0, 4);
+  const upcomingMovies = allMovies.filter((m) => isUpcomingMovie(m)).slice(0, 4);
 
   return (
     <div className="min-h-screen bg-[#000000] text-slate-100 flex flex-col">

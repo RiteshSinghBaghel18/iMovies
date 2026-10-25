@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import useFetch from "../hooks/useFetch";
 import Loader from "../components/Loader";
+import { isUpcomingMovie } from "../utils/movieCategory";
 import { 
   Search, 
   Filter, 
@@ -16,15 +17,6 @@ import {
   Compass,
   ArrowRight
 } from "lucide-react";
-
-// Check if a movie is already released (date <= today)
-const isMovieReleased = (movie) => {
-  if (!movie.releaseDate) return true;
-  const release = new Date(movie.releaseDate);
-  const today = new Date();
-  today.setHours(23, 59, 59, 999);
-  return release <= today;
-};
 
 const Home = () => {
   const [search, setSearch] = useState("");
@@ -50,28 +42,18 @@ const Home = () => {
     return ["All", ...Array.from(set)];
   }, [movies]);
 
-  // Split all movies into (1) In Theatres vs (2) Upcoming Releases
-  // Admin-added movies are placed into either section based on releaseDate, prioritized at the top
+  // Partition movies strictly into:
+  // (1) In Theatres vs (2) Upcoming Releases
+  // Admin-added movies are placed strictly based on release date, prioritized at the top
   const { inTheatresList, upcomingList } = useMemo(() => {
     const inTheatres = [];
     const upcoming = [];
 
     movies.forEach((m) => {
-      const released = isMovieReleased(m);
-      if (m.isAdminAdded || m.isCustom) {
-        // Admin movie categorized strictly by release date
-        if (released) {
-          inTheatres.push(m);
-        } else {
-          upcoming.push(m);
-        }
+      if (isUpcomingMovie(m)) {
+        upcoming.push(m);
       } else {
-        // TMDB movies categorized by category & release status
-        if (m.category === "upcoming" && !released) {
-          upcoming.push(m);
-        } else {
-          inTheatres.push(m);
-        }
+        inTheatres.push(m);
       }
     });
 
@@ -143,7 +125,7 @@ const Home = () => {
   // Render a movie card
   const renderMovieCard = (movie) => {
     const isAdmin = movie.isAdminAdded || movie.isCustom;
-    const isUpcoming = !isMovieReleased(movie) || movie.category === "upcoming";
+    const isUpcoming = isUpcomingMovie(movie);
 
     return (
       <div
@@ -267,7 +249,7 @@ const Home = () => {
                   <Star className="w-3.5 h-3.5 fill-[#76b900]" />
                   <span>Exclusive Admin Premiere</span>
                 </div>
-              ) : isMovieReleased(featuredMovie) ? (
+              ) : !isUpcomingMovie(featuredMovie) ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 text-xs font-bold uppercase tracking-wider">
                   <Film className="w-3.5 h-3.5" />
                   <span>Now Showing in Theatres</span>
