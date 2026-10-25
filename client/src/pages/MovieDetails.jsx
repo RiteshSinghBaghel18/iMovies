@@ -60,7 +60,6 @@ const MovieDetails = () => {
 
   // Trailer modal state
   const [showTrailer, setShowTrailer] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
   const [trailerFailed, setTrailerFailed] = useState(false);
 
   const movie = movieData?.movie;
@@ -159,7 +158,7 @@ const MovieDetails = () => {
           {getYouTubeVideoId(movie.trailerUrl) && !trailerFailed ? (
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <iframe
-                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(movie.trailerUrl)}?autoplay=1&mute=${isMuted ? "1" : "0"}&controls=0&loop=1&playlist=${getYouTubeVideoId(movie.trailerUrl)}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&playsinline=1`}
+                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(movie.trailerUrl)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${getYouTubeVideoId(movie.trailerUrl)}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&playsinline=1`}
                 title={`${movie.movieName} Ambient Trailer`}
                 className="w-[140%] h-[140%] -ml-[20%] -mt-[10%] object-cover opacity-55 scale-105 pointer-events-none"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -176,34 +175,6 @@ const MovieDetails = () => {
           <div className="absolute inset-0 bg-gradient-to-t from-cinema-darkest via-cinema-darkest/75 to-transparent hero-backdrop-overlay pointer-events-none" />
           <div className="absolute inset-0 bg-gradient-to-r from-cinema-darkest via-cinema-darkest/80 to-transparent hero-side-overlay pointer-events-none" />
         </div>
-
-        {/* Ambient Trailer Audio Toggle Pill */}
-        {getYouTubeVideoId(movie.trailerUrl) && !trailerFailed && (
-          <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-[#27272a] text-[11px] font-bold text-[#76b900]">
-              <span className="w-2 h-2 rounded-full bg-[#76b900] animate-pulse" />
-              Live Trailer In Background
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsMuted(!isMuted)}
-              className="px-3 py-1.5 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-[#27272a] hover:border-[#76b900]/50 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-lg"
-              title={isMuted ? "Unmute Trailer Audio" : "Mute Trailer Audio"}
-            >
-              {isMuted ? (
-                <>
-                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Audio Muted</span>
-                </>
-              ) : (
-                <>
-                  <Volume2 className="w-3.5 h-3.5 text-[#76b900]" />
-                  <span className="text-[#76b900]">Playing Audio</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-end">
