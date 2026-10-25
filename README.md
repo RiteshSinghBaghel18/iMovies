@@ -15,7 +15,6 @@ The user interface is designed around an Green (#76b900), deep black, and clean 
 - Movie Details with Ambient Video Trailers:
   - When opening a movie overview, the official trailer plays automatically in the background behind the title and poster.
   - If a trailer is not available, the interface smoothly falls back to the movie backdrop image.
-  - Audio can be toggled on or off directly from the header banner.
 - Cast and Crew Profiles: Detailed headshot photos, actor names, and character roles for featured cast members.
 - Interactive Seating Selection:
   - Visual auditorium map divided into Balcony, Middle, and Lower seating tiers.
@@ -102,6 +101,3 @@ The user interface is designed around an Green (#76b900), deep black, and clean 
 
 ---
 
-## License
-
-This project is licensed under the MIT License.
