@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { 
   Film, 
   Ticket, 
@@ -13,11 +14,14 @@ import {
   Compass,
   CreditCard,
   Search,
-  Sparkles
+  Sparkles,
+  Sun,
+  Moon
 } from "lucide-react";
 
 const Header = () => {
   const { user, role, isAdmin, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,7 +38,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Logo (Clean iMovies branding with Film Icon, no prime logo) */}
+          {/* Logo (Clean iMovies branding with Film Icon) */}
           <Link to={isAuthenticated ? "/home" : "/landing"} className="flex items-center gap-2.5 group">
             <div className="w-9 h-9 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 group-hover:bg-[#ff6600] group-hover:text-slate-950 transition-all shadow-md shadow-[#ff6600]/15">
               <Film className="w-5 h-5" />
@@ -122,6 +126,21 @@ const Header = () => {
 
           {/* Right Action buttons */}
           <div className="hidden md:flex items-center gap-3">
+            
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl bg-[#18181f] border border-[#27272a] text-[#ff6600] hover:text-white hover:border-[#ff6600] transition-all flex items-center justify-center shadow-sm"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle Theme"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-[#ff6600]" />
+              )}
+            </button>
+
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <Link
@@ -167,8 +186,15 @@ const Header = () => {
             )}
           </div>
 
-          {/* Mobile hamburger */}
+          {/* Mobile hamburger & Theme button */}
           <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-[#18181f] border border-[#27272a] text-[#ff6600]"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#ff6600]" />}
+            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#18181f]"
@@ -211,16 +237,16 @@ const Header = () => {
                   <Link
                     to="/admin"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-amber-300 hover:bg-amber-500/10"
+                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-amber-400 hover:bg-amber-500/10"
                   >
                     Admin Dashboard
                   </Link>
                   <Link
                     to="/admin/transactions"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-[#ff6600] hover:bg-[#18181f]"
+                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-[#ff6600] hover:bg-[#ff6600]/10"
                   >
-                    Refunds & Transactions
+                    Refunds & Razorpay
                   </Link>
                 </>
               )}

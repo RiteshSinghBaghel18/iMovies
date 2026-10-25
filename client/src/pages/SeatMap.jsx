@@ -22,6 +22,25 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
+// Robust helper to normalize tickets so seatId, seatNumber, row, col are ALWAYS defined
+const normalizeTickets = (rawTickets = {}) => {
+  const normalized = {};
+  Object.entries(rawTickets).forEach(([key, seat]) => {
+    if (!seat) return;
+    const seatId = String(seat.seatNumber || seat.seatId || key);
+    const row = seat.row || seatId.replace(/\d+/g, "").replace(/^[A-Za-z]+-/, "") || "A";
+    const col = Number(seat.col) || parseInt(seatId.match(/\d+/)?.[0] || "1", 10);
+    normalized[seatId] = {
+      ...seat,
+      seatNumber: seatId,
+      seatId: seatId,
+      row,
+      col,
+    };
+  });
+  return normalized;
+};
+
 const SeatMap = () => {
   const { showId } = useParams();
   const navigate = useNavigate();
@@ -50,12 +69,13 @@ const SeatMap = () => {
       if (res.data.success) {
         setShow(res.data.show);
         setMovie(res.data.movie);
-        setTickets(res.data.show.tickets || {});
+        const normalized = normalizeTickets(res.data.show.tickets || {});
+        setTickets(normalized);
 
         // Check if user already has active locks in this show
         const userLocks = [];
         let expAt = null;
-        Object.values(res.data.show.tickets || {}).forEach((t) => {
+        Object.values(normalized).forEach((t) => {
           if (t.status === "locked" && t.lockedBy === user?.email && new Date(t.lockExpiresAt) > new Date()) {
             userLocks.push(t.seatNumber);
             expAt = t.lockExpiresAt;
@@ -87,7 +107,8 @@ const SeatMap = () => {
 
     const handleSeatsUpdated = (data) => {
       if (data.showId === showId && data.tickets) {
-        setTickets(data.tickets);
+        const normalized = normalizeTickets(data.tickets);
+        setTickets(normalized);
 
         // If another user locked a seat that I was considering, notify and deselect
         if (data.action === "locked") {

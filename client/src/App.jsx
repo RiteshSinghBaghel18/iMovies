@@ -4,6 +4,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // Context Providers
+import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import { SocketProvider } from "./context/SocketContext";
 
@@ -40,7 +41,8 @@ const AdminTransactionsPage = lazy(() => import("./pages/AdminTransactionsPage")
 function App() {
   return (
     <Router>
-      <AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
         <SocketProvider>
           <div className="flex flex-col min-h-screen bg-cinema-darkest text-slate-100 font-sans selection:bg-primary selection:text-black">
             <Header />
@@ -196,6 +198,7 @@ function App() {
           </div>
         </SocketProvider>
       </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

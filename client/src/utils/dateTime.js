@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 
 /**
- * Parses showDate ("YYYY-MM-DD") and showTime (e.g., "10:00 AM", "01:00 PM", "1:30 pm")
+ * Parses showDate ("YYYY-MM-DD" or Date object) and showTime (e.g., "10:00 AM", "01:00 PM")
  * and checks if the showtime has already passed compared to current system time.
  * 
- * @param {string} showDate - Format "YYYY-MM-DD" or Date parseable
+ * @param {string|Date} showDate - Format "YYYY-MM-DD" or Date parseable
  * @param {string} showTime - Format "hh:mm A" or "h:mm A"
  * @param {number} bufferMinutes - Optional buffer before start time (default 0)
  * @returns {boolean} - true if show is in the past, false if upcoming
@@ -13,8 +13,13 @@ export const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
   if (!showDate || !showTime) return false;
 
   try {
-    // If showDate is formatted as YYYY-MM-DD
-    const dateMatch = showDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const dateStr = typeof showDate === "string" 
+      ? showDate.split("T")[0] 
+      : showDate instanceof Date 
+      ? showDate.toISOString().split("T")[0] 
+      : String(showDate).split("T")[0];
+
+    const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
     let year, month, day;
 
     if (dateMatch) {
@@ -29,8 +34,7 @@ export const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
       day = d.getDate();
     }
 
-    // Parse showTime e.g., "10:00 AM", "01:00 PM", "6:45 PM"
-    const timeMatch = showTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    const timeMatch = String(showTime).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
     if (!timeMatch) return false;
 
     let hours = parseInt(timeMatch[1], 10);
@@ -46,7 +50,6 @@ export const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
     const showDateTime = new Date(year, month, day, hours, minutes, 0, 0);
     const now = new Date();
 
-    // Check with optional buffer
     return showDateTime.getTime() + bufferMinutes * 60 * 1000 <= now.getTime();
   } catch (err) {
     console.error("[isShowPast] Error parsing date/time:", err);

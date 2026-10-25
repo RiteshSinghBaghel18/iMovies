@@ -199,6 +199,50 @@ const Login = () => {
             </button>
           </div>
 
+          {/* Quick 1-Click Demo Login Options */}
+          <div className="mb-6 p-3 rounded-xl bg-[#09090b] border border-[#27272a] space-y-2">
+            <span className="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider block">
+              Quick 1-Click Credentials:
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("demo@imovies.com");
+                  setPassword("user123");
+                  setIsAdmin(false);
+                  setUnverifiedEmail(null);
+                }}
+                className="py-1.5 px-2.5 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] hover:border-[#ff6600] text-left transition-all group"
+              >
+                <div className="text-[11px] font-bold text-white group-hover:text-[#ff6600]">
+                  👤 Demo User
+                </div>
+                <div className="text-[9px] text-[#a1a1aa] truncate font-mono">
+                  demo@imovies.com
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail("admin@imovies.com");
+                  setPassword("admin123");
+                  setIsAdmin(true);
+                  setUnverifiedEmail(null);
+                }}
+                className="py-1.5 px-2.5 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] hover:border-amber-400 text-left transition-all group"
+              >
+                <div className="text-[11px] font-bold text-white group-hover:text-amber-400">
+                  👑 Admin Portal
+                </div>
+                <div className="text-[9px] text-[#a1a1aa] truncate font-mono">
+                  admin@imovies.com
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -208,11 +252,11 @@ const Login = () => {
               <div className="relative">
                 <Mail className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@example.com"
+                  placeholder={isAdmin ? "admin@imovies.com or admin" : "demo@imovies.com or username"}
                   className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
                 />
               </div>
@@ -418,7 +462,7 @@ const Login = () => {
                     <div className="relative">
                       <Mail className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
-                        type="email"
+                        type="text"
                         required
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}

@@ -1,11 +1,17 @@
 /**
- * Checks if a showDate ("YYYY-MM-DD") and showTime (e.g. "10:00 AM", "01:00 PM") have passed
+ * Checks if a showDate ("YYYY-MM-DD" or Date object) and showTime (e.g. "10:00 AM", "01:00 PM") have passed
  */
 const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
   if (!showDate || !showTime) return false;
 
   try {
-    const dateMatch = showDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const dateStr = typeof showDate === "string" 
+      ? showDate.split("T")[0] 
+      : showDate instanceof Date 
+      ? showDate.toISOString().split("T")[0] 
+      : String(showDate).split("T")[0];
+
+    const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
     let year, month, day;
 
     if (dateMatch) {
@@ -20,7 +26,7 @@ const isShowPast = (showDate, showTime, bufferMinutes = 0) => {
       day = d.getDate();
     }
 
-    const timeMatch = showTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    const timeMatch = String(showTime).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
     if (!timeMatch) return false;
 
     let hours = parseInt(timeMatch[1], 10);

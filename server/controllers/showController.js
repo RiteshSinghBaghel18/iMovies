@@ -29,15 +29,23 @@ const generateShowTickets = (theatre) => {
   }
 
   tiers.forEach((tier) => {
-    const rows = tier.config?.rows && tier.config.rows.length > 0 
-      ? tier.config.rows 
-      : (tier.name === "balcony" ? ["A", "B"] : tier.name === "middle" ? ["C", "D", "E"] : ["F", "G"]);
-    const seatsPerRow = Number(tier.config?.seatsPerRow) || (tier.name === "balcony" ? 10 : 12);
+    let rows = [];
+    if (Array.isArray(tier.config?.rows) && tier.config.rows.length > 0) {
+      rows = tier.config.rows;
+    } else if (typeof tier.config?.rows === "number") {
+      const startChar = tier.name === "balcony" ? 65 : tier.name === "middle" ? 67 : 71; // A, C, G
+      rows = Array.from({ length: tier.config.rows }, (_, i) => String.fromCharCode(startChar + i));
+    } else {
+      rows = tier.name === "balcony" ? ["A", "B"] : tier.name === "middle" ? ["C", "D", "E"] : ["F", "G"];
+    }
+
+    const seatsPerRow = Number(tier.config?.seatsPerRow || tier.config?.cols) || (tier.name === "balcony" ? 10 : 12);
 
     rows.forEach((row) => {
       for (let col = 1; col <= seatsPerRow; col++) {
         const seatId = `${row}${col}`;
         tickets[seatId] = {
+          seatId: seatId,
           seatNumber: seatId,
           row,
           col,
@@ -160,30 +168,29 @@ exports.getShowById = async (req, res) => {
       return res.status(404).json({ success: false, message: "Show not found." });
     }
 
-    // Auto-release any expired locks in this show
+        // Auto-release any expired locks in this show and normalize seat IDs
     const now = new Date();
     let modified = false;
 
-    if (show.tickets) {
-      if (Array.isArray(show.tickets)) {
-        show.tickets.forEach((t) => {
-          if (t.status === "locked" && t.lockExpiresAt && new Date(t.lockExpiresAt) <= now) {
-            t.status = "available";
-            t.lockedBy = null;
-            t.lockExpiresAt = null;
-            modified = true;
-          }
-        });
-      } else {
-        Object.values(show.tickets).forEach((t) => {
-          if (t && t.status === "locked" && t.lockExpiresAt && new Date(t.lockExpiresAt) <= now) {
-            t.status = "available";
-            t.lockedBy = null;
-            t.lockExpiresAt = null;
-            modified = true;
-          }
-        });
-      }
+    if (show.tickets && typeof show.tickets === "object" && !Array.isArray(show.tickets)) {
+      Object.entries(show.tickets).forEach(([key, t]) => {
+        if (!t) return;
+        const sId = String(t.seatNumber || t.seatId || key);
+        const row = t.row || sId.replace(/\d+/g, "").replace(/^[A-Za-z]+-/, "") || "A";
+        const col = Number(t.col) || parseInt(sId.match(/\d+/)?.[0] || "1", 10);
+
+        t.seatNumber = sId;
+        t.seatId = sId;
+        t.row = row;
+        t.col = col;
+
+        if (t.status === "locked" && t.lockExpiresAt && new Date(t.lockExpiresAt) <= now) {
+          t.status = "available";
+          t.lockedBy = null;
+          t.lockExpiresAt = null;
+          modified = true;
+        }
+      });
 
       if (modified) {
         show.markModified("tickets");
