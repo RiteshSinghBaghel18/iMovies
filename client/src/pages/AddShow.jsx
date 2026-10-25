@@ -104,13 +104,13 @@ const AddShow = () => {
         <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <Link
             to="/admin"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#ff6600] mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#76b900] mb-2 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-2.5">
-            <Calendar className="w-6 h-6 text-[#ff6600]" />
+            <Calendar className="w-6 h-6 text-[#76b900]" />
             <h1 className="text-2xl font-bold text-white">Schedule Custom Showtime</h1>
           </div>
           <p className="text-xs text-[#a1a1aa] mt-1">
@@ -135,7 +135,7 @@ const AddShow = () => {
                   setMovieId(e.target.value);
                   if (e.target.value) setCustomMovieName("");
                 }}
-                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
               >
                 <option value="">-- Select from Database Movies --</option>
                 {movies.map((m) => (
@@ -153,7 +153,7 @@ const AddShow = () => {
                     value={customMovieName}
                     onChange={(e) => setCustomMovieName(e.target.value)}
                     placeholder="e.g. Dune: Part Three"
-                    className="w-full mt-1 bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                    className="w-full mt-1 bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
               )}
@@ -170,7 +170,7 @@ const AddShow = () => {
                   setTheatreId(e.target.value);
                   if (e.target.value) setCustomTheatreName("");
                 }}
-                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
               >
                 <option value="">-- Select Registered Theatre --</option>
                 {theatres.map((t) => (
@@ -188,7 +188,7 @@ const AddShow = () => {
                     value={customTheatreName}
                     onChange={(e) => setCustomTheatreName(e.target.value)}
                     placeholder="e.g. Cinema Royale - Screen 1"
-                    className="w-full mt-1 bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                    className="w-full mt-1 bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
               )}
@@ -205,7 +205,7 @@ const AddShow = () => {
                   required
                   value={showDate}
                   onChange={(e) => setShowDate(e.target.value)}
-                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
                 />
               </div>
 
@@ -221,7 +221,7 @@ const AddShow = () => {
                     value={showTime}
                     onChange={(e) => setShowTime(e.target.value)}
                     placeholder="e.g. 01:15 PM or 08:30 PM"
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white font-semibold focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
               </div>
@@ -240,8 +240,8 @@ const AddShow = () => {
                     onClick={() => setShowTime(time)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                       showTime === time
-                        ? "bg-[#ff6600] border-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/30"
-                        : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:text-white hover:border-[#ff6600]/50"
+                        ? "bg-[#76b900] border-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/30"
+                        : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:text-white hover:border-[#76b900]/50"
                     }`}
                   >
                     {time}
@@ -252,7 +252,7 @@ const AddShow = () => {
 
             {/* Optional Seat Pricing Overrides */}
             <div className="p-4 rounded-xl bg-[#09090b] border border-[#27272a] space-y-3">
-              <span className="text-xs font-bold text-[#ff6600] uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-xs font-bold text-[#76b900] uppercase tracking-wider flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5" />
                 Custom Tier Base Pricing (Optional Overrides)
               </span>
@@ -265,7 +265,7 @@ const AddShow = () => {
                     placeholder="Default (₹400)"
                     value={customBalconyPrice}
                     onChange={(e) => setCustomBalconyPrice(e.target.value)}
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                   />
                 </div>
                 <div>
@@ -276,7 +276,7 @@ const AddShow = () => {
                     placeholder="Default (₹280)"
                     value={customMiddlePrice}
                     onChange={(e) => setCustomMiddlePrice(e.target.value)}
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                   />
                 </div>
                 <div>
@@ -287,7 +287,7 @@ const AddShow = () => {
                     placeholder="Default (₹180)"
                     value={customLowerPrice}
                     onChange={(e) => setCustomLowerPrice(e.target.value)}
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                   />
                 </div>
               </div>
@@ -304,7 +304,7 @@ const AddShow = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-lg shadow-[#ff6600]/30 flex items-center gap-2 transition-all disabled:opacity-50"
+                className="px-6 py-3 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-lg shadow-[#76b900]/30 flex items-center gap-2 transition-all disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
                 <span>{loading ? "Scheduling..." : "Schedule Showtime"}</span>

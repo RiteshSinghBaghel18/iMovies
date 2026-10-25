@@ -147,13 +147,13 @@ const AddTheatre = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           <Link
             to="/admin"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#ff6600] mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#76b900] mb-2 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Dashboard
           </Link>
           <div className="flex items-center gap-2.5">
-            <Tv className="w-6 h-6 text-[#ff6600]" />
+            <Tv className="w-6 h-6 text-[#76b900]" />
             <h1 className="text-2xl font-bold text-white">Create Cinema Theatre & Seating Sections</h1>
           </div>
         </div>
@@ -181,7 +181,7 @@ const AddTheatre = () => {
                     value={theatreName}
                     onChange={(e) => setTheatreName(e.target.value)}
                     placeholder="e.g. iMovies PVR - Grand Plaza"
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
 
@@ -194,7 +194,7 @@ const AddTheatre = () => {
                     value={theatreId}
                     onChange={(e) => setTheatreId(e.target.value)}
                     placeholder="e.g. th-grandplaza-01"
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
               </div>
@@ -209,7 +209,7 @@ const AddTheatre = () => {
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. 4th Floor, Grand Central Mall, MG Road"
-                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#ff6600]"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#76b900]"
                 />
               </div>
             </div>
@@ -241,7 +241,7 @@ const AddTheatre = () => {
                       min={0}
                       value={balconyPrice}
                       onChange={(e) => setBalconyPrice(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -252,7 +252,7 @@ const AddTheatre = () => {
                       value={balconyRows}
                       onChange={(e) => setBalconyRows(e.target.value)}
                       placeholder="e.g. A, B"
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -264,7 +264,7 @@ const AddTheatre = () => {
                       max={30}
                       value={balconySeatsPerRow}
                       onChange={(e) => setBalconySeatsPerRow(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                 </div>
@@ -273,7 +273,7 @@ const AddTheatre = () => {
               {/* Middle Tier (Premium) */}
               <div className="p-4 rounded-xl bg-[#18181f] border border-[#27272a] space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#ff6600] uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#76b900] uppercase tracking-wide flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5" />
                     Middle Tier (Premium)
                   </span>
@@ -291,7 +291,7 @@ const AddTheatre = () => {
                       min={0}
                       value={middlePrice}
                       onChange={(e) => setMiddlePrice(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -302,7 +302,7 @@ const AddTheatre = () => {
                       value={middleRows}
                       onChange={(e) => setMiddleRows(e.target.value)}
                       placeholder="e.g. C, D, E"
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -314,7 +314,7 @@ const AddTheatre = () => {
                       max={30}
                       value={middleSeatsPerRow}
                       onChange={(e) => setMiddleSeatsPerRow(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                 </div>
@@ -341,7 +341,7 @@ const AddTheatre = () => {
                       min={0}
                       value={lowerPrice}
                       onChange={(e) => setLowerPrice(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -352,7 +352,7 @@ const AddTheatre = () => {
                       value={lowerRows}
                       onChange={(e) => setLowerRows(e.target.value)}
                       placeholder="e.g. F, G"
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                   <div>
@@ -364,7 +364,7 @@ const AddTheatre = () => {
                       max={30}
                       value={lowerSeatsPerRow}
                       onChange={(e) => setLowerSeatsPerRow(e.target.value)}
-                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                      className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                     />
                   </div>
                 </div>
@@ -376,13 +376,13 @@ const AddTheatre = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
                 <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-[#ff6600]" />
+                  <Layers className="w-4 h-4 text-[#76b900]" />
                   <span>3. Custom Additional Sections</span>
                 </h2>
                 <button
                   type="button"
                   onClick={addCustomSection}
-                  className="px-3 py-1.5 rounded-lg bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 hover:bg-[#ff6600] hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 hover:bg-[#76b900] hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add Section</span>
@@ -398,7 +398,7 @@ const AddTheatre = () => {
                   {customSections.map((sec, idx) => (
                     <div key={sec.id} className="p-4 rounded-xl bg-[#18181f] border border-[#27272a] space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#ff6600]">
+                        <span className="text-xs font-bold text-[#76b900]">
                           Section #{idx + 1}: {sec.label || "Custom Section"}
                         </span>
                         <button
@@ -420,7 +420,7 @@ const AddTheatre = () => {
                             value={sec.label}
                             onChange={(e) => updateCustomSection(sec.id, "label", e.target.value)}
                             placeholder="e.g. Royal Box"
-                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                           />
                         </div>
                         <div>
@@ -431,7 +431,7 @@ const AddTheatre = () => {
                             min={0}
                             value={sec.price}
                             onChange={(e) => updateCustomSection(sec.id, "price", e.target.value)}
-                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                           />
                         </div>
                         <div>
@@ -442,7 +442,7 @@ const AddTheatre = () => {
                             value={sec.rows}
                             onChange={(e) => updateCustomSection(sec.id, "rows", e.target.value)}
                             placeholder="e.g. R1, R2"
-                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                           />
                         </div>
                         <div>
@@ -454,7 +454,7 @@ const AddTheatre = () => {
                             max={30}
                             value={sec.seatsPerRow}
                             onChange={(e) => updateCustomSection(sec.id, "seatsPerRow", e.target.value)}
-                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#ff6600]"
+                            className="w-full bg-[#09090b] border border-[#27272a] rounded-lg px-3 py-2 text-sm text-white focus:border-[#76b900]"
                           />
                         </div>
                       </div>
@@ -468,11 +468,11 @@ const AddTheatre = () => {
             <div className="p-4 rounded-xl bg-[#09090b] border border-[#27272a] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase font-bold text-[#a1a1aa]">Auditorium Capacity</p>
-                <p className="text-2xl font-black text-[#ff6600]">{grandTotalCapacity} Total Seats</p>
+                <p className="text-2xl font-black text-[#76b900]">{grandTotalCapacity} Total Seats</p>
               </div>
               <div className="text-xs text-[#a1a1aa] space-y-0.5 text-left sm:text-right">
                 <p>Balcony: {totalBalcony} • Middle: {totalMiddle} • Lower: {totalLower}</p>
-                {totalCustom > 0 && <p className="text-[#ff6600]">Custom Sections: +{totalCustom} seats</p>}
+                {totalCustom > 0 && <p className="text-[#76b900]">Custom Sections: +{totalCustom} seats</p>}
               </div>
             </div>
 
@@ -487,7 +487,7 @@ const AddTheatre = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-3 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-lg shadow-[#ff6600]/30 flex items-center gap-2 transition-all disabled:opacity-50"
+                className="px-6 py-3 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-lg shadow-[#76b900]/30 flex items-center gap-2 transition-all disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
                 <span>{loading ? "Registering..." : "Create Theatre & Layout"}</span>

@@ -94,7 +94,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
           seats: selectedSeats.join(", "),
         },
         theme: {
-          color: "#ff6600", // Amazon Prime Cyan signature
+          color: "#76b900", // Amazon Prime Cyan signature
         },
         modal: {
           ondismiss: function () {
@@ -161,7 +161,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
         {/* Amazon Prime Styled Header */}
         <div className="flex items-center justify-between p-5 border-b border-[#27272a] bg-[#09090b]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30">
+            <div className="w-10 h-10 rounded-xl bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -186,7 +186,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
           <div className="p-5 rounded-xl bg-[#18181f] border border-[#27272a] space-y-3">
             <div className="flex justify-between items-start pb-2 border-b border-[#23324a]">
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#ff6600]">Show Details</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-[#76b900]">Show Details</span>
                 <h4 className="text-base font-bold text-white truncate max-w-[280px]">
                   {movie?.movieName || "Movie"}
                 </h4>
@@ -194,7 +194,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
                   {show.theatreName} • {show.showDate} at {show.showTime}
                 </p>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30">
                 Live Reserved
               </span>
             </div>
@@ -221,13 +221,13 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
 
             <div className="pt-3 border-t border-[#23324a] flex justify-between items-center">
               <span className="font-bold text-white text-sm">Total Payable:</span>
-              <span className="text-2xl font-black text-[#ff6600]">₹{grandTotal}</span>
+              <span className="text-2xl font-black text-[#76b900]">₹{grandTotal}</span>
             </div>
           </div>
 
           {/* Direct Payment Channel Info */}
           <div className="p-4 rounded-xl bg-[#09090b] border border-[#27272a] flex items-start gap-3">
-            <Zap className="w-5 h-5 text-[#ff6600] flex-shrink-0 mt-0.5" />
+            <Zap className="w-5 h-5 text-[#76b900] flex-shrink-0 mt-0.5" />
             <div className="text-xs space-y-1">
               <p className="text-white font-semibold">Official Razorpay Test Gateway</p>
               <p className="text-[#a1a1aa]">
@@ -241,7 +241,7 @@ const PaymentModal = ({ show, movie, selectedSeats, totalSeatPrice, onPaymentSuc
             <button
               onClick={handleRazorpayPayment}
               disabled={processing}
-              className="w-full py-4 px-6 rounded-xl font-black text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] transition-all shadow-lg shadow-[#ff6600]/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group text-base"
+              className="w-full py-4 px-6 rounded-xl font-black text-slate-950 bg-[#76b900] hover:bg-[#8cd600] transition-all shadow-lg shadow-[#76b900]/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group text-base"
             >
               {processing ? (
                 <>

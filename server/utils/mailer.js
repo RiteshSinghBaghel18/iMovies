@@ -56,8 +56,8 @@ const sendBookingConfirmation = async (booking) => {
       subject: `🎟️ Booking Confirmed: ${booking.movieDetails?.movieName || "Movie Ticket"} - Booking #${booking.bookingId}`,
       html: `
         <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #ffffff; padding: 30px; border-radius: 12px; max-width: 600px; margin: auto;">
-          <div style="text-align: center; border-bottom: 2px solid #e50914; padding-bottom: 15px;">
-            <h1 style="color: #e50914; margin: 0; font-size: 28px; letter-spacing: 2px;">iMovies</h1>
+          <div style="text-align: center; border-bottom: 2px solid #76b900; padding-bottom: 15px;">
+            <h1 style="color: #76b900; margin: 0; font-size: 28px; letter-spacing: 2px;">iMovies</h1>
             <p style="color: #9ca3af; margin: 5px 0 0;">Movie ticket booking made simple</p>
           </div>
           
@@ -68,7 +68,7 @@ const sendBookingConfirmation = async (booking) => {
             <table style="width: 100%; border-collapse: collapse; margin-top: 15px; color: #e5e7eb;">
               <tr>
                 <td style="padding: 8px 0; color: #9ca3af;">Booking ID:</td>
-                <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #e50914;">${booking.bookingId}</td>
+                <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #76b900;">${booking.bookingId}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #9ca3af;">Movie:</td>
@@ -127,7 +127,7 @@ const sendShowReminder = async (userEmail, booking) => {
       subject: `🍿 Reminder: Your movie starts soon! - ${booking.movieDetails?.movieName || "Upcoming Movie"}`,
       html: `
         <div style="font-family: Arial, sans-serif; background-color: #0b0f19; color: #ffffff; padding: 25px; border-radius: 12px; max-width: 600px; margin: auto;">
-          <h2 style="color: #e50914; margin-top: 0;">Don't Forget the Popcorn! 🍿</h2>
+          <h2 style="color: #76b900; margin-top: 0;">Don't Forget the Popcorn! 🍿</h2>
           <p style="color: #d1d5db;">This is a friendly reminder that your show is scheduled for today:</p>
           <div style="background-color: #1f2937; padding: 15px; border-radius: 8px; margin: 15px 0;">
             <p style="margin: 5px 0; color: #ffffff;"><strong>Movie:</strong> ${booking.movieDetails?.movieName || "Movie"}</p>

@@ -2,7 +2,7 @@
 
 A full-stack cinema booking web application built on the **MERN** stack (MongoDB, Express.js, React.js, Node.js) with real-time **Socket.io** WebSocket seat synchronization, 10-minute temporary seat locking, printable QR digital passes, Razorpay test payment processing, automated cron services, and an executive administration suite.
 
-Styled in a signature **Vibrant Orange, Pitch Black, and Crisp White** cinema palette.
+Styled in a signature **NVIDIA Green (`#76b900`), Pitch Black, and Crisp White** cinema palette.
 
 ---
 
@@ -10,7 +10,7 @@ Styled in a signature **Vibrant Orange, Pitch Black, and Crisp White** cinema pa
 
 ### 1. Frontend (React 18 + Vite)
 - **Code-Splitting & Lazy Loading**: All pages use `React.lazy` and `Suspense` for sub-second page loads.
-- **Cinematic Dark Design**: Signature orange (`#ff6600`), pitch black (`#000000`), and clean white aesthetic with curved auditorium screens and responsive layout.
+- **Cinematic High-Tech Design**: Signature NVIDIA green (`#76b900`), pitch black (`#000000`), and clean white aesthetic with curved auditorium screens and responsive layout.
 - **Real-Time Seat Picker (`/seatslug/:showId`)**:
   - Multi-tier seat map: **Balcony (VIP)**, **Middle (Premium)**, and **Lower (Standard)**.
   - Live WebSocket synchronization with **Socket.io** across concurrent browsers.
@@ -52,7 +52,7 @@ iMovies/
 │   │   ├── utils/              # Axios API instance with JWT interceptors, dateTime helpers
 │   │   ├── App.jsx             # React Router configuration with lazy loading
 │   │   └── main.jsx
-│   ├── tailwind.config.js      # Orange, Black & White Cinema Theme
+│   ├── tailwind.config.js      # NVIDIA Green, Black & White Theme
 │   └── package.json
 │
 └── server/                     # Backend (Node.js + Express.js REST API)

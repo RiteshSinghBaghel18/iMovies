@@ -314,7 +314,7 @@ const SeatMap = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Show Not Found</h2>
-        <Link to="/home" className="px-5 py-2.5 rounded-xl bg-[#ff6600] text-slate-950 font-bold text-sm">
+        <Link to="/home" className="px-5 py-2.5 rounded-xl bg-[#76b900] text-slate-950 font-bold text-sm">
           Return to Movies
         </Link>
       </div>
@@ -348,7 +348,7 @@ const SeatMap = () => {
 
             {/* TTL Timer if locked */}
             {lockExpiresAt && timeLeft && (
-              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#ff6600]/15 border border-[#ff6600]/30 text-[#ff6600] animate-pulse">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#76b900]/15 border border-[#76b900]/30 text-[#76b900] animate-pulse">
                 <Clock className="w-4 h-4" />
                 <span className="text-xs font-semibold uppercase tracking-wider">Seats Reserved:</span>
                 <span className="text-base font-black tracking-widest">{timeLeft}</span>
@@ -419,8 +419,8 @@ const SeatMap = () => {
               {Object.keys(middleRows).length > 0 && (
                 <div>
                   <div className="flex items-center justify-between border-b border-[#27272a] pb-2 mb-4">
-                    <span className="text-xs font-bold text-[#ff6600] uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-[#ff6600]" />
+                    <span className="text-xs font-bold text-[#76b900] uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[#76b900]" />
                       Middle Tier (Premium) — ₹{show.pricing?.middle || 250}
                     </span>
                     <span className="text-[10px] text-[#a1a1aa]">Center Tier • Premium Viewing Angle</span>
@@ -478,7 +478,7 @@ const SeatMap = () => {
             {/* Cinema Screen positioned correctly at FRONT / BOTTOM (facing seats) */}
             <div className="text-center mt-12 mb-4">
               <div className="cinema-screen-bottom" />
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[#ff6600] flex items-center justify-center gap-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-[#76b900] flex items-center justify-center gap-2">
                 <span>▼</span>
                 <span>ALL EYES THIS WAY • CINEMA SCREEN</span>
                 <span>▼</span>
@@ -495,7 +495,7 @@ const SeatMap = () => {
                 <span>Available</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-[#ff6600] text-black font-extrabold flex items-center justify-center text-[10px] shadow-glow-prime" />
+                <div className="w-6 h-6 rounded-md bg-[#76b900] text-black font-extrabold flex items-center justify-center text-[10px] shadow-glow-prime" />
                 <span className="text-white font-semibold">Selected</span>
               </div>
               <div className="flex items-center gap-2">
@@ -526,13 +526,13 @@ const SeatMap = () => {
                 </div>
                 <div className="min-w-0">
                   <div className="mb-0.5">
-                    <span className="text-[10px] text-[#ff6600] font-bold uppercase tracking-wider">
+                    <span className="text-[10px] text-[#76b900] font-bold uppercase tracking-wider">
                       Ticket Pass
                     </span>
                   </div>
                   <h3 className="font-bold text-white text-base truncate">{movie?.movieName}</h3>
                   <p className="text-xs text-[#a1a1aa] mt-0.5">{show.theatreName}</p>
-                  <p className="text-xs text-[#ff6600] font-semibold mt-1">
+                  <p className="text-xs text-[#76b900] font-semibold mt-1">
                     {show.showDate} • {show.showTime}
                   </p>
                 </div>
@@ -554,7 +554,7 @@ const SeatMap = () => {
                       return (
                         <div
                           key={seatId}
-                          className="px-2.5 py-1 rounded-lg bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/30 text-xs font-bold flex items-center gap-1.5"
+                          className="px-2.5 py-1 rounded-lg bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30 text-xs font-bold flex items-center gap-1.5"
                         >
                           <span>{seatId}</span>
                           <span className="text-[10px] text-slate-300 font-normal">
@@ -581,7 +581,7 @@ const SeatMap = () => {
                   <span className="text-[#a1a1aa]">Integrated Taxes (2.5%):</span>
                   <span>₹{Math.round(totalSeatPrice * 0.025)}</span>
                 </div>
-                <div className="flex justify-between text-base font-extrabold text-[#ff6600] pt-2 border-t border-[#27272a]">
+                <div className="flex justify-between text-base font-extrabold text-[#76b900] pt-2 border-t border-[#27272a]">
                   <span>Grand Total:</span>
                   <span>
                     ₹{totalSeatPrice + Math.round(totalSeatPrice * 0.05) + Math.round(totalSeatPrice * 0.025)}
@@ -594,7 +594,7 @@ const SeatMap = () => {
                 type="button"
                 onClick={handleLockAndProceed}
                 disabled={selectedSeats.length === 0 || isShowEnded}
-                className="w-full py-4 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-xl shadow-[#ff6600]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
+                className="w-full py-4 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-xl shadow-[#76b900]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
               >
                 <Lock className="w-4 h-4" />
                 <span>{isShowEnded ? "Showtime Closed" : "Lock Seats & Checkout"}</span>
@@ -648,11 +648,11 @@ const SeatMap = () => {
     if (isBooked) {
       btnClass += "bg-[#09090b] border-[#141d2c] text-slate-600 opacity-40 cursor-not-allowed";
     } else if (isSelected) {
-      btnClass += "bg-[#ff6600] border-[#ff6600] text-black font-black shadow-glow-prime scale-110";
+      btnClass += "bg-[#76b900] border-[#76b900] text-black font-black shadow-glow-prime scale-110";
     } else if (isLockedOther) {
       btnClass += "bg-amber-500/20 border-amber-500/50 text-amber-400 cursor-not-allowed";
     } else {
-      btnClass += "bg-[#18181f] border-[#3f3f46] text-slate-300 hover:border-[#ff6600] hover:text-white";
+      btnClass += "bg-[#18181f] border-[#3f3f46] text-slate-300 hover:border-[#76b900] hover:text-white";
     }
 
     return (

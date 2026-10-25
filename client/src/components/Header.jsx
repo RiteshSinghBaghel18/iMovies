@@ -40,12 +40,12 @@ const Header = () => {
           
           {/* Logo (Clean iMovies branding with Film Icon) */}
           <Link to={isAuthenticated ? "/home" : "/landing"} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 group-hover:bg-[#ff6600] group-hover:text-slate-950 transition-all shadow-md shadow-[#ff6600]/15">
+            <div className="w-9 h-9 rounded-xl bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30 group-hover:bg-[#76b900] group-hover:text-slate-950 transition-all shadow-md shadow-[#76b900]/15">
               <Film className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
               <span className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center">
-                i<span className="text-[#ff6600]">Movies</span>
+                i<span className="text-[#76b900]">Movies</span>
               </span>
               <span className="text-[9px] tracking-widest text-[#a1a1aa] uppercase -mt-1 hidden sm:block font-bold">
                 Tickets Made Simple
@@ -59,11 +59,11 @@ const Header = () => {
               to="/home"
               className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                 isActive("/home")
-                  ? "bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 font-bold"
+                  ? "bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 font-bold"
                   : "text-slate-300 hover:text-white hover:bg-[#18181f]/60"
               }`}
             >
-              <Compass className="w-4 h-4 text-[#ff6600]" />
+              <Compass className="w-4 h-4 text-[#76b900]" />
               Explore Movies
             </Link>
 
@@ -73,7 +73,7 @@ const Header = () => {
                   to="/favoriteshows"
                   className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                     isActive("/favoriteshows")
-                      ? "bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 font-bold"
+                      ? "bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 font-bold"
                       : "text-slate-300 hover:text-white hover:bg-[#18181f]/60"
                   }`}
                 >
@@ -85,11 +85,11 @@ const Header = () => {
                   to="/bookings"
                   className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                     isActive("/bookings")
-                      ? "bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 font-bold"
+                      ? "bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 font-bold"
                       : "text-slate-300 hover:text-white hover:bg-[#18181f]/60"
                   }`}
                 >
-                  <Ticket className="w-4 h-4 text-[#ff6600]" />
+                  <Ticket className="w-4 h-4 text-[#76b900]" />
                   My Tickets
                 </Link>
 
@@ -111,11 +111,11 @@ const Header = () => {
                       to="/admin/transactions"
                       className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
                         isActive("/admin/transactions")
-                          ? "bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/30"
+                          ? "bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30"
                           : "text-slate-300 hover:text-white hover:bg-[#18181f]/60"
                       }`}
                     >
-                      <CreditCard className="w-4 h-4 text-[#ff6600]" />
+                      <CreditCard className="w-4 h-4 text-[#76b900]" />
                       Refunds & Razorpay
                     </Link>
                   </>
@@ -130,14 +130,14 @@ const Header = () => {
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-[#18181f] border border-[#27272a] text-[#ff6600] hover:text-white hover:border-[#ff6600] transition-all flex items-center justify-center shadow-sm"
+              className="p-2.5 rounded-xl bg-[#18181f] border border-[#27272a] text-[#76b900] hover:text-white hover:border-[#76b900] transition-all flex items-center justify-center shadow-sm"
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
               aria-label="Toggle Theme"
             >
               {isDark ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-[#ff6600]" />
+                <Moon className="w-4 h-4 text-[#76b900]" />
               )}
             </button>
 
@@ -145,9 +145,9 @@ const Header = () => {
               <div className="flex items-center gap-3">
                 <Link
                   to="/profile"
-                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#18181f] border border-[#27272a] hover:border-[#ff6600]/60 transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-[#18181f] border border-[#27272a] hover:border-[#76b900]/60 transition-colors"
                 >
-                  <div className="w-7 h-7 rounded-full bg-[#ff6600]/20 text-[#ff6600] flex items-center justify-center font-bold text-xs uppercase border border-[#ff6600]/30">
+                  <div className="w-7 h-7 rounded-full bg-[#76b900]/20 text-[#76b900] flex items-center justify-center font-bold text-xs uppercase border border-[#76b900]/30">
                     {user?.username?.charAt(0) || "U"}
                   </div>
                   <span className="text-sm font-medium text-slate-200 pr-1">
@@ -178,7 +178,7 @@ const Header = () => {
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 rounded-lg text-sm font-black bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 transition-all shadow-md shadow-[#ff6600]/20"
+                  className="px-4 py-2 rounded-lg text-sm font-black bg-[#76b900] hover:bg-[#8cd600] text-slate-950 transition-all shadow-md shadow-[#76b900]/20"
                 >
                   Sign Up
                 </Link>
@@ -190,10 +190,10 @@ const Header = () => {
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg bg-[#18181f] border border-[#27272a] text-[#ff6600]"
+              className="p-2 rounded-lg bg-[#18181f] border border-[#27272a] text-[#76b900]"
               title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#ff6600]" />}
+              {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-[#76b900]" />}
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -244,7 +244,7 @@ const Header = () => {
                   <Link
                     to="/admin/transactions"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-[#ff6600] hover:bg-[#ff6600]/10"
+                    className="block px-3 py-2.5 rounded-lg text-sm font-medium text-[#76b900] hover:bg-[#76b900]/10"
                   >
                     Refunds & Razorpay
                   </Link>
@@ -279,7 +279,7 @@ const Header = () => {
               <Link
                 to="/register"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full py-2.5 text-center rounded-lg text-sm font-black bg-[#ff6600] text-slate-950"
+                className="w-full py-2.5 text-center rounded-lg text-sm font-black bg-[#76b900] text-slate-950"
               >
                 Sign Up
               </Link>

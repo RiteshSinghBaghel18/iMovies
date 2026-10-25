@@ -28,6 +28,14 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
+const formatTierRows = (tier, fallback) => {
+  if (!tier) return fallback;
+  if (Array.isArray(tier.rows)) return tier.rows.join(", ");
+  if (typeof tier.rows === "number") return `${tier.rows} Rows (${tier.cols || 10} seats)`;
+  if (typeof tier.rows === "string") return tier.rows;
+  return fallback;
+};
+
 const AdminDashboard = () => {
   const { data, loading, error, refetch: refetchStats } = useFetch("/auth/admin/stats");
   const { data: tmdbStatus, refetch: refetchTmdbStatus } = useFetch("/tmdb/status");
@@ -180,7 +188,7 @@ const AdminDashboard = () => {
             <div className="flex flex-wrap items-center gap-2">
               <Link
                 to="/addmovie"
-                className="px-3.5 py-2 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-[#ff6600]/20 transition-all"
+                className="px-3.5 py-2 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-[#76b900]/20 transition-all"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 Add Movie
@@ -196,7 +204,7 @@ const AdminDashboard = () => {
                 to="/addshow"
                 className="px-3.5 py-2 rounded-xl bg-[#18181f] hover:bg-[#3f3f46] border border-[#27272a] text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-all"
               >
-                <Calendar className="w-3.5 h-3.5 text-[#ff6600]" />
+                <Calendar className="w-3.5 h-3.5 text-[#76b900]" />
                 Schedule Show
               </Link>
               <Link
@@ -216,7 +224,7 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab("overview")}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                 activeTab === "overview"
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                   : "bg-[#18181f] text-[#a1a1aa] hover:text-white border border-[#27272a]"
               }`}
             >
@@ -228,7 +236,7 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab("movies")}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === "movies"
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                   : "bg-[#18181f] text-[#a1a1aa] hover:text-white border border-[#27272a]"
               }`}
             >
@@ -241,7 +249,7 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab("theatres")}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === "theatres"
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                   : "bg-[#18181f] text-[#a1a1aa] hover:text-white border border-[#27272a]"
               }`}
             >
@@ -254,7 +262,7 @@ const AdminDashboard = () => {
               onClick={() => setActiveTab("shows")}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                 activeTab === "shows"
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                   : "bg-[#18181f] text-[#a1a1aa] hover:text-white border border-[#27272a]"
               }`}
             >
@@ -289,7 +297,7 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-[#27272a]">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Film className="w-5 h-5 text-[#ff6600]" />
+                  <Film className="w-5 h-5 text-[#76b900]" />
                   <span>Movie Catalog Management</span>
                 </h2>
                 <p className="text-xs text-[#a1a1aa]">
@@ -305,12 +313,12 @@ const AdminDashboard = () => {
                     value={movieSearch}
                     onChange={(e) => setMovieSearch(e.target.value)}
                     placeholder="Search movies by name..."
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
                 <Link
                   to="/addmovie"
-                  className="px-3 py-2 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-bold text-xs flex items-center gap-1.5 flex-shrink-0"
+                  className="px-3 py-2 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-bold text-xs flex items-center gap-1.5 flex-shrink-0"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Add Movie</span>
@@ -341,7 +349,7 @@ const AdminDashboard = () => {
                             className="w-10 h-14 object-cover rounded-md bg-[#09090b] flex-shrink-0 border border-[#27272a]"
                           />
                           <div>
-                            <p className="font-bold text-white text-sm hover:text-[#ff6600] transition-colors">{m.movieName}</p>
+                            <p className="font-bold text-white text-sm hover:text-[#76b900] transition-colors">{m.movieName}</p>
                             <span className="text-[10px] text-[#a1a1aa] font-mono">ID: {m._id}</span>
                           </div>
                         </div>
@@ -391,7 +399,7 @@ const AdminDashboard = () => {
                     value={theatreSearch}
                     onChange={(e) => setTheatreSearch(e.target.value)}
                     placeholder="Search theatres..."
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
                 <Link
@@ -424,9 +432,9 @@ const AdminDashboard = () => {
                       </td>
                       <td className="py-3 px-4 text-[#a1a1aa]">{t.location}</td>
                       <td className="py-3 px-4">
-                        <span className="text-amber-400 font-semibold">Balcony ({t.balconySeats?.rows?.join(",") || "A,B"})</span> •{" "}
-                        <span className="text-[#ff6600] font-semibold">Middle ({t.middleSeats?.rows?.join(",") || "C,D,E"})</span> •{" "}
-                        <span className="text-slate-300 font-semibold">Lower ({t.lowerSeats?.rows?.join(",") || "F,G"})</span>
+                        <span className="text-amber-400 font-semibold">Balcony ({formatTierRows(t.balconySeats, "3 Rows")})</span> •{" "}
+                        <span className="text-[#76b900] font-semibold">Middle ({formatTierRows(t.middleSeats, "5 Rows")})</span> •{" "}
+                        <span className="text-slate-300 font-semibold">Lower ({formatTierRows(t.lowerSeats, "3 Rows")})</span>
                         {t.customSections?.length > 0 && (
                           <span className="block text-[11px] text-emerald-400">+{t.customSections.length} Custom Section(s)</span>
                         )}
@@ -459,7 +467,7 @@ const AdminDashboard = () => {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-[#27272a]">
               <div>
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-[#ff6600]" />
+                  <Calendar className="w-5 h-5 text-[#76b900]" />
                   <span>Scheduled Showtimes</span>
                 </h2>
                 <p className="text-xs text-[#a1a1aa]">
@@ -475,12 +483,12 @@ const AdminDashboard = () => {
                     value={showSearch}
                     onChange={(e) => setShowSearch(e.target.value)}
                     placeholder="Search shows by theatre or date..."
-                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600]"
+                    className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900]"
                   />
                 </div>
                 <Link
                   to="/addshow"
-                  className="px-3 py-2 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-xs flex items-center gap-1.5 flex-shrink-0"
+                  className="px-3 py-2 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-xs flex items-center gap-1.5 flex-shrink-0"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Schedule Show</span>
@@ -503,7 +511,7 @@ const AdminDashboard = () => {
                 <tbody className="divide-y divide-[#27272a] text-slate-300">
                   {filteredShows.map((s) => (
                     <tr key={s.showId || s._id} className="hover:bg-[#18181f]/50 transition-colors">
-                      <td className="py-3 px-4 font-mono font-bold text-[#ff6600]">#{s.showId}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-[#76b900]">#{s.showId}</td>
                       <td className="py-3 px-4 font-bold text-white">{s.theatreName}</td>
                       <td className="py-3 px-4">{s.showDate}</td>
                       <td className="py-3 px-4 font-black text-amber-400">{s.showTime}</td>
@@ -552,7 +560,7 @@ const AdminDashboard = () => {
               <div className="p-6 rounded-2xl bg-[#121216] border border-[#27272a] space-y-2">
                 <div className="flex items-center justify-between text-[#a1a1aa]">
                   <span className="text-xs uppercase font-semibold">Total Bookings</span>
-                  <Ticket className="w-5 h-5 text-[#ff6600]" />
+                  <Ticket className="w-5 h-5 text-[#76b900]" />
                 </div>
                 <p className="text-3xl font-extrabold text-white">
                   {stats?.totalBookings || 0}
@@ -565,7 +573,7 @@ const AdminDashboard = () => {
               <div className="p-6 rounded-2xl bg-[#121216] border border-[#27272a] space-y-2">
                 <div className="flex items-center justify-between text-[#a1a1aa]">
                   <span className="text-xs uppercase font-semibold">Active Shows</span>
-                  <Film className="w-5 h-5 text-[#ff6600]" />
+                  <Film className="w-5 h-5 text-[#76b900]" />
                 </div>
                 <p className="text-3xl font-extrabold text-white">
                   {stats?.totalShows || shows.length}
@@ -594,7 +602,7 @@ const AdminDashboard = () => {
             <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30">
+                  <div className="w-8 h-8 rounded-lg bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30">
                     <Wifi className="w-4 h-4" />
                   </div>
                   <div>
@@ -619,7 +627,7 @@ const AdminDashboard = () => {
                     type="button"
                     disabled={syncing}
                     onClick={() => handleTMDBSync(false)}
-                    className="px-3.5 py-2 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md shadow-[#ff6600]/20 disabled:opacity-40"
+                    className="px-3.5 py-2 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-xs flex items-center gap-1.5 transition-all shadow-md shadow-[#76b900]/20 disabled:opacity-40"
                   >
                     <Database className="w-3.5 h-3.5" />
                     Full Sync
@@ -638,7 +646,7 @@ const AdminDashboard = () => {
 
                 <div className="p-4 rounded-xl bg-[#09090b] border border-[#27272a] space-y-1">
                   <p className="text-[10px] text-[#a1a1aa] uppercase font-semibold tracking-wider">Total Movies in Catalog</p>
-                  <p className="text-2xl font-black text-[#ff6600]">
+                  <p className="text-2xl font-black text-[#76b900]">
                     {movies.length}
                   </p>
                 </div>
@@ -658,7 +666,7 @@ const AdminDashboard = () => {
                 <h2 className="text-base font-bold text-white">Recent Platform Bookings</h2>
                 <Link
                   to="/adminbookings"
-                  className="text-xs font-semibold text-[#ff6600] hover:text-[#ff7700] flex items-center gap-1"
+                  className="text-xs font-semibold text-[#76b900] hover:text-[#8cd600] flex items-center gap-1"
                 >
                   <span>View all</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -683,7 +691,7 @@ const AdminDashboard = () => {
                     <tbody className="divide-y divide-[#27272a] text-slate-300">
                       {stats.recentBookings.map((b) => (
                         <tr key={b.bookingId} className="hover:bg-[#18181f]/50">
-                          <td className="py-3 px-4 font-mono font-bold text-[#ff6600]">#{b.bookingId}</td>
+                          <td className="py-3 px-4 font-mono font-bold text-[#76b900]">#{b.bookingId}</td>
                           <td className="py-3 px-4">{b.userEmail}</td>
                           <td className="py-3 px-4 font-semibold text-white">{b.movieDetails?.movieName || "Movie"}</td>
                           <td className="py-3 px-4">{b.selectedSeats?.join(", ")}</td>

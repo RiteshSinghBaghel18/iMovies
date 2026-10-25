@@ -232,14 +232,14 @@ const sendVerificationEmail = async (email, verificationLink, username = "Movie 
           
           <!-- Top Accent Bar -->
           <tr>
-            <td height="4" style="background: linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f97316 100%);"></td>
+            <td height="4" style="background: linear-gradient(90deg, #76b900 0%, #8cd600 50%, #5c9200 100%);"></td>
           </tr>
 
           <!-- Header / Brand -->
           <tr>
             <td style="padding: 35px 40px 20px; text-align: center;">
               <div style="display: inline-block; padding: 10px 18px; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.4); border-radius: 50px; margin-bottom: 12px;">
-                <span style="color: #ef4444; font-size: 20px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
+                <span style="color: #76b900; font-size: 20px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
               </div>
               <h1 style="margin: 15px 0 6px; font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.5px;">Verify Your Email Address</h1>
               <p style="margin: 0; color: #94a3b8; font-size: 14px;">Movie ticket booking made simple</p>
@@ -263,7 +263,7 @@ const sendVerificationEmail = async (email, verificationLink, username = "Movie 
                 <span style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 10px;">
                   🔑 Your 6-Digit One-Time Password (OTP)
                 </span>
-                <div style="font-size: 38px; font-weight: 900; color: #ef4444; letter-spacing: 12px; font-family: 'Courier New', Courier, monospace; background: #080d19; padding: 12px 24px; border-radius: 12px; display: inline-block; border: 1px solid #1e293b; box-shadow: 0 6px 16px rgba(0,0,0,0.6);">
+                <div style="font-size: 38px; font-weight: 900; color: #76b900; letter-spacing: 12px; font-family: 'Courier New', Courier, monospace; background: #080d19; padding: 12px 24px; border-radius: 12px; display: inline-block; border: 1px solid #1e293b; box-shadow: 0 6px 16px rgba(0,0,0,0.6);">
                   ${otp}
                 </div>
                 <p style="margin: 12px 0 0; font-size: 12px; color: #cbd5e1;">
@@ -283,7 +283,7 @@ const sendVerificationEmail = async (email, verificationLink, username = "Movie 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 20px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${verificationLink}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 38px; border-radius: 12px; box-shadow: 0 10px 25px rgba(220, 38, 38, 0.4); letter-spacing: 0.3px;">
+                    <a href="${verificationLink}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #76b900 0%, #5c9200 100%); color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 38px; border-radius: 12px; box-shadow: 0 10px 25px rgba(220, 38, 38, 0.4); letter-spacing: 0.3px;">
                       Verify Account Instantly →
                     </a>
                   </td>
@@ -296,7 +296,7 @@ const sendVerificationEmail = async (email, verificationLink, username = "Movie 
                   🛡️ If you did not create an iMovies account, please disregard this email.
                 </p>
                 <p style="margin: 8px 0 0; font-size: 11px; color: #64748b; word-break: break-all;">
-                  Direct link: <a href="${verificationLink}" style="color: #ef4444; text-decoration: underline;">${verificationLink}</a>
+                  Direct link: <a href="${verificationLink}" style="color: #76b900; text-decoration: underline;">${verificationLink}</a>
                 </p>
               </div>
             </td>
@@ -482,7 +482,7 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
           
           <!-- Top Accent Bar -->
           <tr>
-            <td height="5" style="background: linear-gradient(90deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%);"></td>
+            <td height="5" style="background: linear-gradient(90deg, #76b900 0%, #8cd600 50%, #5c9200 100%);"></td>
           </tr>
 
           <!-- Header -->
@@ -491,7 +491,7 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
               <table width="100%">
                 <tr>
                   <td>
-                    <span style="color: #ef4444; font-size: 22px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
+                    <span style="color: #76b900; font-size: 22px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
                     <span style="display: block; font-size: 11px; color: #94a3b8; margin-top: 3px;">OFFICIAL DIGITAL TICKET PASS</span>
                   </td>
                   <td align="right">
@@ -516,7 +516,7 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
                     : ""
                 }
                 <div style="display: table-cell; vertical-align: middle;">
-                  <span style="display: inline-block; background: #dc2626; color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 6px;">
+                  <span style="display: inline-block; background: #76b900; color: #000000; font-weight: 900; color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; margin-bottom: 6px;">
                     NOW SHOWING
                   </span>
                   <h2 style="margin: 0 0 6px; color: #ffffff; font-size: 20px; font-weight: 800;">${movieName}</h2>
@@ -532,7 +532,7 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
               <table width="100%" cellspacing="0" cellpadding="0" style="background: rgba(15, 23, 42, 0.6); border: 1px dashed #334155; border-radius: 12px; padding: 18px;">
                 <tr>
                   <td style="padding: 8px 0; color: #94a3b8; font-size: 13px;">Booking ID:</td>
-                  <td align="right" style="padding: 8px 0; color: #ef4444; font-size: 14px; font-weight: 800; font-family: monospace;">${bookingId}</td>
+                  <td align="right" style="padding: 8px 0; color: #76b900; font-size: 14px; font-weight: 800; font-family: monospace;">${bookingId}</td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #94a3b8; font-size: 13px;">Show Date:</td>
@@ -561,7 +561,7 @@ const sendBookingConfirmationEmail = async (email, bookingDetails) => {
           <!-- Entry Gate Instructions -->
           <tr>
             <td style="padding: 0 40px 30px;">
-              <div style="background: rgba(30, 41, 59, 0.5); border-left: 4px solid #ef4444; border-radius: 4px 8px 8px 4px; padding: 14px 16px;">
+              <div style="background: rgba(30, 41, 59, 0.5); border-left: 4px solid #76b900; border-radius: 4px 8px 8px 4px; padding: 14px 16px;">
                 <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #ffffff;">
                   🍿 Cinema Entry Instructions:
                 </p>
@@ -641,7 +641,7 @@ const sendBookingStatusUpdateEmail = async (email, statusDetails) => {
           <!-- Header -->
           <tr>
             <td style="padding: 35px 40px 20px; text-align: center;">
-              <span style="color: #ef4444; font-size: 20px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
+              <span style="color: #76b900; font-size: 20px; font-weight: 900; letter-spacing: 2px;">iMOVIES</span>
               <h1 style="margin: 15px 0 6px; font-size: 22px; font-weight: 800; color: #ffffff;">
                 Booking Status: <span style="color: ${statusColor};">${status}</span>
               </h1>
@@ -654,7 +654,7 @@ const sendBookingStatusUpdateEmail = async (email, statusDetails) => {
             <td style="padding: 10px 40px 30px;">
               <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #1e293b; border-radius: 12px; padding: 18px; margin-bottom: 20px;">
                 <p style="margin: 0 0 10px; font-size: 14px; color: #e2e8f0;">
-                  Your booking for <strong>${movieName}</strong> (Booking ID: <code style="color: #ef4444;">${bookingId}</code>) has been updated to <strong>${status}</strong>.
+                  Your booking for <strong>${movieName}</strong> (Booking ID: <code style="color: #76b900;">${bookingId}</code>) has been updated to <strong>${status}</strong>.
                 </p>
                 <p style="margin: 0; font-size: 13px; color: #94a3b8;">
                   <strong>Reason / Note:</strong> ${reason}

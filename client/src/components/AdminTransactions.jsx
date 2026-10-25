@@ -195,7 +195,7 @@ const AdminTransactions = () => {
                 onClick={() => setSelectedStatus(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                   selectedStatus === st
-                    ? "bg-primary text-black font-bold shadow-md shadow-orange-500/30"
+                    ? "bg-primary text-black font-bold shadow-md shadow-[#76b900]/30"
                     : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
                 }`}
               >

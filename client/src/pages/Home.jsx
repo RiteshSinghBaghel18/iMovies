@@ -95,7 +95,7 @@ const Home = () => {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <p className="text-[#ff6600] font-semibold mb-2">Error loading titles</p>
+        <p className="text-[#76b900] font-semibold mb-2">Error loading titles</p>
         <p className="text-sm text-[#a1a1aa]">{error}</p>
       </div>
     );
@@ -113,8 +113,8 @@ const Home = () => {
               alt={featuredMovie.movieName}
               className="w-full h-full object-cover object-top opacity-35 filter saturate-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#000000] via-[#000000]/75 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#000000] via-[#000000]/80 to-transparent" />
+            <div className="absolute inset-0 hero-backdrop-overlay bg-gradient-to-t from-[#000000] via-[#000000]/75 to-transparent" />
+            <div className="absolute inset-0 hero-side-overlay bg-gradient-to-r from-[#000000] via-[#000000]/80 to-transparent" />
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
@@ -122,8 +122,8 @@ const Home = () => {
               
               {/* Distinct Badge based on movie type */}
               {featuredMovie.isAdminAdded || featuredMovie.isCustom ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/40 text-xs font-black uppercase tracking-wider shadow-sm shadow-[#ff6600]/30 animate-pulse">
-                  <Star className="w-3.5 h-3.5 fill-[#ff6600]" />
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/40 text-xs font-black uppercase tracking-wider shadow-sm shadow-[#76b900]/30 animate-pulse">
+                  <Star className="w-3.5 h-3.5 fill-[#76b900]" />
                   <span>⭐ Exclusive Admin Premiere</span>
                 </div>
               ) : featuredMovie.category === "upcoming" ? (
@@ -132,7 +132,7 @@ const Home = () => {
                   <span>Upcoming Theatrical Release</span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 text-xs font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 text-xs font-bold uppercase tracking-wider">
                   <Film className="w-3.5 h-3.5" />
                   <span>Now Showing in Theatres</span>
                 </div>
@@ -155,7 +155,7 @@ const Home = () => {
                 <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-xs font-bold text-slate-200">
                   {featuredMovie.certification || "U/A"}
                 </span>
-                <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-xs font-bold text-[#ff6600]">
+                <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-xs font-bold text-[#76b900]">
                   4K • Dolby Atmos
                 </span>
               </div>
@@ -168,7 +168,7 @@ const Home = () => {
               <div className="pt-2 flex flex-wrap items-center gap-3">
                 <Link
                   to={`/movieshows/${featuredMovie._id}`}
-                  className="px-6 py-3 rounded-lg bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-xl shadow-[#ff6600]/25 flex items-center gap-2 hover:scale-105 transition-all"
+                  className="px-6 py-3 rounded-lg bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-xl shadow-[#76b900]/25 flex items-center gap-2 hover:scale-105 transition-all"
                 >
                   <Ticket className="w-4 h-4" />
                   <span>Book Theatrical Tickets</span>
@@ -178,7 +178,7 @@ const Home = () => {
                   to={`/moviedetails/${featuredMovie._id}`}
                   className="px-5 py-3 rounded-lg bg-[#18181f]/90 hover:bg-[#27272a] text-slate-200 border border-[#27272a] font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-sm"
                 >
-                  <Play className="w-4 h-4 text-[#ff6600]" />
+                  <Play className="w-4 h-4 text-[#76b900]" />
                   <span>Overview</span>
                 </Link>
               </div>
@@ -197,7 +197,7 @@ const Home = () => {
             onClick={() => setSelectedCategory("All")}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
               selectedCategory === "All"
-                ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                 : "bg-[#121216] text-[#a1a1aa] hover:text-white border border-[#27272a]"
             }`}
           >
@@ -213,7 +213,7 @@ const Home = () => {
             onClick={() => setSelectedCategory("now_playing")}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
               selectedCategory === "now_playing"
-                ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                 : "bg-[#121216] text-[#a1a1aa] hover:text-white border border-[#27272a]"
             }`}
           >
@@ -230,7 +230,7 @@ const Home = () => {
             onClick={() => setSelectedCategory("upcoming")}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
               selectedCategory === "upcoming"
-                ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
+                ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
                 : "bg-[#121216] text-[#a1a1aa] hover:text-white border border-[#27272a]"
             }`}
           >
@@ -248,14 +248,14 @@ const Home = () => {
               onClick={() => setSelectedCategory("admin")}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
                 selectedCategory === "admin"
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/20"
-                  : "bg-[#121216] text-[#ff6600] hover:text-white border border-[#ff6600]/30"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
+                  : "bg-[#121216] text-[#76b900] hover:text-white border border-[#76b900]/30"
               }`}
             >
-              <Star className="w-3.5 h-3.5 fill-[#ff6600]" />
+              <Star className="w-3.5 h-3.5 fill-[#76b900]" />
               <span>Admin Premieres</span>
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                selectedCategory === "admin" ? "bg-black/20 text-slate-950" : "bg-[#ff6600]/20 text-[#ff6600]"
+                selectedCategory === "admin" ? "bg-black/20 text-slate-950" : "bg-[#76b900]/20 text-[#76b900]"
               }`}>
                 {counts.admin}
               </span>
@@ -275,7 +275,7 @@ const Home = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search titles, actors, genres..."
-                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
               />
             </div>
 
@@ -284,7 +284,7 @@ const Home = () => {
               <select
                 value={selectedGenre}
                 onChange={(e) => setSelectedGenre(e.target.value)}
-                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#ff6600] transition-colors"
+                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#76b900] transition-colors"
               >
                 {genresList.map((g) => (
                   <option key={g} value={g}>
@@ -299,7 +299,7 @@ const Home = () => {
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#ff6600] transition-colors"
+                className="w-full bg-[#18181f] border border-[#27272a] rounded-xl px-3 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-[#76b900] transition-colors"
               >
                 {languagesList.map((l) => (
                   <option key={l} value={l}>
@@ -322,7 +322,7 @@ const Home = () => {
                 onClick={() => setSelectedGenre(genre)}
                 className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
                   selectedGenre === genre
-                    ? "bg-[#ff6600] text-slate-950 shadow-sm shadow-[#ff6600]/30 font-black"
+                    ? "bg-[#76b900] text-slate-950 shadow-sm shadow-[#76b900]/30 font-black"
                     : "bg-[#18181f] text-[#a1a1aa] hover:text-white border border-[#27272a]"
                 }`}
               >
@@ -343,17 +343,17 @@ const Home = () => {
                 </>
               ) : selectedCategory === "admin" ? (
                 <>
-                  <Star className="w-5 h-5 text-[#ff6600] fill-[#ff6600]" />
+                  <Star className="w-5 h-5 text-[#76b900] fill-[#76b900]" />
                   <span>Admin Premieres & Features</span>
                 </>
               ) : selectedCategory === "now_playing" ? (
                 <>
-                  <Film className="w-5 h-5 text-[#ff6600]" />
+                  <Film className="w-5 h-5 text-[#76b900]" />
                   <span>Currently In Theatres</span>
                 </>
               ) : (
                 <>
-                  <Film className="w-5 h-5 text-[#ff6600]" />
+                  <Film className="w-5 h-5 text-[#76b900]" />
                   <span>Theatrical Releases & Upcoming</span>
                 </>
               )}
@@ -379,7 +379,7 @@ const Home = () => {
                 setSelectedGenre("All");
                 setSelectedLanguage("All");
               }}
-              className="mt-4 px-5 py-2.5 rounded-lg bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 text-xs font-black"
+              className="mt-4 px-5 py-2.5 rounded-lg bg-[#76b900] hover:bg-[#8cd600] text-slate-950 text-xs font-black"
             >
               Reset Filters
             </button>
@@ -395,8 +395,8 @@ const Home = () => {
                   key={movie._id}
                   className={`group bg-[#121216] rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex flex-col justify-between ${
                     isAdmin 
-                      ? "border-[#ff6600]/60 hover:border-[#ff6600] hover:shadow-[#ff6600]/20" 
-                      : "border-[#27272a] hover:border-[#ff6600]/70 hover:shadow-[#ff6600]/10"
+                      ? "border-[#76b900]/60 hover:border-[#76b900] hover:shadow-[#76b900]/20" 
+                      : "border-[#27272a] hover:border-[#76b900]/70 hover:shadow-[#76b900]/10"
                   }`}
                 >
                   {/* Poster Container */}
@@ -411,7 +411,7 @@ const Home = () => {
                     {/* Prominent Category Badge on Top Left */}
                     <div className="absolute top-2 left-2 z-10">
                       {isAdmin ? (
-                        <div className="px-2 py-0.5 rounded-md bg-[#ff6600] text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md shadow-[#ff6600]/30">
+                        <div className="px-2 py-0.5 rounded-md bg-[#76b900] text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md shadow-[#76b900]/30">
                           <Star className="w-2.5 h-2.5 fill-slate-950" />
                           <span>Admin Premiere</span>
                         </div>
@@ -421,7 +421,7 @@ const Home = () => {
                           <span>Upcoming</span>
                         </div>
                       ) : (
-                        <div className="px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-sm border border-[#27272a] text-[#ff6600] text-[9px] font-bold uppercase tracking-wider">
+                        <div className="px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-sm border border-[#27272a] text-[#76b900] text-[9px] font-bold uppercase tracking-wider">
                           In Theatres
                         </div>
                       )}
@@ -444,7 +444,7 @@ const Home = () => {
                     <div>
                       <Link to={`/moviedetails/${movie._id}`}>
                         <h3 
-                          className="font-bold text-xs sm:text-sm text-white group-hover:text-[#ff6600] transition-colors truncate" 
+                          className="font-bold text-xs sm:text-sm text-white group-hover:text-[#76b900] transition-colors truncate" 
                           title={movie.movieName}
                         >
                           {movie.movieName}
@@ -466,10 +466,10 @@ const Home = () => {
                         to={`/movieshows/${movie._id}`}
                         className={`flex-1 py-1.5 px-2 rounded-lg text-slate-950 text-[11px] font-black text-center shadow-sm transition-all flex items-center justify-center gap-1 ${
                           isAdmin 
-                            ? "bg-[#ff6600] hover:bg-[#ff7700] shadow-[#ff6600]/30"
+                            ? "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/30"
                             : isUpcoming
                             ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                            : "bg-[#ff6600] hover:bg-[#ff7700] shadow-[#ff6600]/20"
+                            : "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/20"
                         }`}
                       >
                         <Ticket className="w-3 h-3" />

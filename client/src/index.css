@@ -16,7 +16,7 @@
   }
 }
 
-/* Custom Cinema Orange Scrollbar */
+/* Custom NVIDIA Green Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -25,21 +25,21 @@
   background: #000000;
 }
 ::-webkit-scrollbar-thumb {
-  background: #ff6600;
+  background: #76b900;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #ff7700;
+  background: #8cd600;
 }
 
-/* Cinema Curved Screen at the TOP (if used) */
+/* Cinema Curved Screen at the TOP (Auditorium Screen) */
 .cinema-screen {
   height: 12px;
   width: 75%;
   margin: 0 auto 30px auto;
-  border-top: 4px solid #ff6600;
+  border-top: 4px solid #76b900;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-  box-shadow: 0 10px 30px -4px rgba(255, 102, 0, 0.45);
+  box-shadow: 0 10px 30px -4px rgba(118, 185, 0, 0.45);
 }
 
 /* Cinema Curved Screen at the BOTTOM (Auditorium orientation facing audience) */
@@ -47,9 +47,9 @@
   height: 14px;
   width: 78%;
   margin: 36px auto 14px auto;
-  border-bottom: 4px solid #ff6600;
+  border-bottom: 4px solid #76b900;
   border-radius: 0 0 50% 50% / 0 0 100% 100%;
-  box-shadow: 0 -12px 35px -3px rgba(255, 102, 0, 0.5);
+  box-shadow: 0 -12px 35px -3px rgba(118, 185, 0, 0.5);
   position: relative;
 }
 
@@ -60,7 +60,7 @@
   left: 10%;
   right: 10%;
   height: 18px;
-  background: radial-gradient(ellipse at bottom, rgba(255, 102, 0, 0.35) 0%, transparent 70%);
+  background: radial-gradient(ellipse at bottom, rgba(118, 185, 0, 0.35) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -103,20 +103,20 @@
   background-color: #000000;
 }
 
-/* Orange badges and glowing accents */
-.prime-badge {
-  background: linear-gradient(135deg, #ff6600 0%, #ea580c 100%);
+/* NVIDIA Green badges and glowing accents */
+.prime-badge, .nvidia-badge {
+  background: linear-gradient(135deg, #76b900 0%, #5c9200 100%);
   color: #000000;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
-.orange-glow {
-  box-shadow: 0 0 25px rgba(255, 102, 0, 0.35);
+.orange-glow, .nvidia-glow {
+  box-shadow: 0 0 25px rgba(118, 185, 0, 0.35);
 }
 
-.orange-glow-sm {
-  box-shadow: 0 0 12px rgba(255, 102, 0, 0.25);
+.orange-glow-sm, .nvidia-glow-sm {
+  box-shadow: 0 0 12px rgba(118, 185, 0, 0.25);
 }
 
 /* ==========================================================================
@@ -179,6 +179,7 @@ html.light input,
 html.light select, 
 html.light textarea {
   color: #0f172a !important;
+  background-color: #ffffff !important;
 }
 
 html.light ::-webkit-scrollbar-track {
@@ -194,7 +195,33 @@ html.light header {
   border-color: #e2e8f0 !important;
 }
 
+html.light footer {
+  background-color: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
 html.light .ticket-edge-left::before,
 html.light .ticket-edge-right::after {
   background-color: #f8fafc !important;
+}
+
+/* Landing Page Hero and Sections Light Mode Enhancements */
+html.light .hero-backdrop-overlay {
+  background: linear-gradient(to top, rgba(248, 250, 252, 0.95), rgba(248, 250, 252, 0.75), rgba(248, 250, 252, 0.3)) !important;
+}
+
+html.light .hero-side-overlay {
+  background: linear-gradient(to right, rgba(248, 250, 252, 0.95), rgba(248, 250, 252, 0.5), rgba(248, 250, 252, 0.95)) !important;
+}
+
+html.light .landing-feature-gradient {
+  background: linear-gradient(to bottom, #f8fafc, #ffffff) !important;
+}
+
+html.light .landing-hero-title {
+  color: #0f172a !important;
+}
+
+html.light .landing-hero-desc {
+  color: #475569 !important;
 }

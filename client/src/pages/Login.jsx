@@ -116,11 +116,11 @@ const Login = () => {
           {/* Logo & Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2.5 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30 shadow-md">
                 <Film className="w-5 h-5" />
               </div>
               <span className="text-2xl font-black text-white">
-                i<span className="text-[#ff6600]">Movies</span>
+                i<span className="text-[#76b900]">Movies</span>
               </span>
             </div>
             <h2 className="text-xl font-bold text-white">
@@ -147,7 +147,7 @@ const Login = () => {
                     <button
                       type="button"
                       onClick={() => setShowOtpModal(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-bold text-[11px] shadow-sm transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-bold text-[11px] shadow-sm transition-all"
                     >
                       <KeyRound className="w-3.5 h-3.5" />
                       <span>Enter 6-Digit OTP</span>
@@ -156,7 +156,7 @@ const Login = () => {
                       type="button"
                       onClick={handleResendVerification}
                       disabled={resendingVerification}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181f] hover:bg-[#3f3f46] text-[#ff6600] border border-[#27272a] font-bold text-[11px] shadow-sm transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181f] hover:bg-[#3f3f46] text-[#76b900] border border-[#27272a] font-bold text-[11px] shadow-sm transition-all disabled:opacity-50"
                     >
                       <Send className="w-3 h-3" />
                       <span>{resendingVerification ? "Sending..." : "Resend OTP & Link"}</span>
@@ -177,7 +177,7 @@ const Login = () => {
               }}
               className={`py-2 text-xs font-bold rounded-lg transition-all ${
                 !isAdmin
-                  ? "bg-[#ff6600] text-slate-950 font-black shadow-md shadow-[#ff6600]/30"
+                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/30"
                   : "text-[#a1a1aa] hover:text-white"
               }`}
             >
@@ -199,50 +199,6 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Quick 1-Click Demo Login Options */}
-          <div className="mb-6 p-3 rounded-xl bg-[#09090b] border border-[#27272a] space-y-2">
-            <span className="text-[10px] font-bold text-[#a1a1aa] uppercase tracking-wider block">
-              Quick 1-Click Credentials:
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("demo@imovies.com");
-                  setPassword("user123");
-                  setIsAdmin(false);
-                  setUnverifiedEmail(null);
-                }}
-                className="py-1.5 px-2.5 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] hover:border-[#ff6600] text-left transition-all group"
-              >
-                <div className="text-[11px] font-bold text-white group-hover:text-[#ff6600]">
-                  👤 Demo User
-                </div>
-                <div className="text-[9px] text-[#a1a1aa] truncate font-mono">
-                  demo@imovies.com
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail("admin@imovies.com");
-                  setPassword("admin123");
-                  setIsAdmin(true);
-                  setUnverifiedEmail(null);
-                }}
-                className="py-1.5 px-2.5 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] hover:border-amber-400 text-left transition-all group"
-              >
-                <div className="text-[11px] font-bold text-white group-hover:text-amber-400">
-                  👑 Admin Portal
-                </div>
-                <div className="text-[9px] text-[#a1a1aa] truncate font-mono">
-                  admin@imovies.com
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -257,7 +213,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={isAdmin ? "admin@imovies.com or admin" : "demo@imovies.com or username"}
-                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                 />
               </div>
             </div>
@@ -275,7 +231,7 @@ const Login = () => {
                       setForgotSuccess(false);
                       setShowForgotModal(true);
                     }}
-                    className="text-xs text-[#ff6600] hover:text-[#ff7700] transition-colors font-medium hover:underline"
+                    className="text-xs text-[#76b900] hover:text-[#8cd600] transition-colors font-medium hover:underline"
                   >
                     Forgot Password?
                   </button>
@@ -289,7 +245,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                  className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                 />
                 <button
                   type="button"
@@ -312,7 +268,7 @@ const Login = () => {
               className={`w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 transition-all shadow-lg hover:scale-[1.02] disabled:opacity-50 mt-2 ${
                 isAdmin
                   ? "bg-amber-500 hover:bg-amber-400 shadow-amber-500/30"
-                  : "bg-[#ff6600] hover:bg-[#ff7700] shadow-[#ff6600]/30"
+                  : "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/30"
               }`}
             >
               {loading ? "Authenticating..." : isAdmin ? "Sign In as Admin" : "Sign In to iMovies"}
@@ -329,7 +285,7 @@ const Login = () => {
           ) : (
             <div className="mt-6 text-center text-xs text-[#a1a1aa]">
               New to iMovies?{" "}
-              <Link to="/register" className="text-[#ff6600] hover:text-[#ff7700] font-bold transition-colors">
+              <Link to="/register" className="text-[#76b900] hover:text-[#8cd600] font-bold transition-colors">
                 Create an account
               </Link>
             </div>
@@ -349,7 +305,7 @@ const Login = () => {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 mb-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 mb-4">
               <KeyRound className="w-7 h-7" />
             </div>
 
@@ -357,7 +313,7 @@ const Login = () => {
             <p className="text-xs text-[#a1a1aa] mt-1">
               Enter the 6-digit code sent to:
             </p>
-            <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#ff6600]">
+            <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#76b900]">
               {unverifiedEmail || email}
             </div>
 
@@ -376,7 +332,7 @@ const Login = () => {
                   value={loginOtp}
                   onChange={(e) => setLoginOtp(e.target.value.replace(/\D/g, ""))}
                   placeholder="• • • • • •"
-                  className="w-full bg-[#09090b] border-2 border-[#ff6600]/50 focus:border-[#ff6600] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
+                  className="w-full bg-[#09090b] border-2 border-[#76b900]/50 focus:border-[#76b900] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all font-mono"
                 />
               </div>
 
@@ -391,7 +347,7 @@ const Login = () => {
                 <button
                   type="submit"
                   disabled={loginOtpLoading || loginOtp.length !== 6}
-                  className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all disabled:opacity-50"
+                  className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#76b900] hover:bg-[#8cd600] shadow-lg shadow-[#76b900]/30 transition-all disabled:opacity-50"
                 >
                   {loginOtpLoading ? "Verifying..." : "Verify & Sign In"}
                 </button>
@@ -403,9 +359,9 @@ const Login = () => {
                 type="button"
                 onClick={handleResendVerification}
                 disabled={resendingVerification}
-                className="text-xs text-[#a1a1aa] hover:text-[#ff6600] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                className="text-xs text-[#a1a1aa] hover:text-[#76b900] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
               >
-                <Send className="w-3 h-3 text-[#ff6600]" />
+                <Send className="w-3 h-3 text-[#76b900]" />
                 <span>{resendingVerification ? "Sending fresh OTP..." : "Resend OTP Code"}</span>
               </button>
             </div>
@@ -445,7 +401,7 @@ const Login = () => {
             ) : (
               <div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2.5 rounded-xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30">
+                  <div className="p-2.5 rounded-xl bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30">
                     <Lock className="w-5 h-5" />
                   </div>
                   <div>
@@ -467,7 +423,7 @@ const Login = () => {
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         placeholder="you@example.com"
-                        className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                        className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                       />
                     </div>
                   </div>
@@ -483,7 +439,7 @@ const Login = () => {
                     <button
                       type="submit"
                       disabled={forgotLoading}
-                      className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all disabled:opacity-50"
+                      className="flex-1 py-3 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#76b900] hover:bg-[#8cd600] shadow-lg shadow-[#76b900]/30 transition-all disabled:opacity-50"
                     >
                       {forgotLoading ? "Sending Link..." : "Send Reset Link"}
                     </button>

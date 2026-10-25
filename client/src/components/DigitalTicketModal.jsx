@@ -26,13 +26,13 @@ const DigitalTicketModal = ({ booking, onClose }) => {
         {/* Header Action Bar */}
         <div className="flex items-center justify-between p-4 border-b border-[#27272a] bg-[#09090b] print:hidden">
           <div className="flex items-center gap-2">
-            <Ticket className="w-5 h-5 text-[#ff6600]" />
+            <Ticket className="w-5 h-5 text-[#76b900]" />
             <h3 className="font-bold text-white text-base">Digital Box Office Pass</h3>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#ff6600] text-slate-950 hover:bg-[#ff7700] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#76b900] text-slate-950 hover:bg-[#8cd600] transition-colors"
             >
               <Printer className="w-4 h-4" />
               Print / Save PDF
@@ -53,12 +53,12 @@ const DigitalTicketModal = ({ booking, onClose }) => {
           <div className="flex items-start justify-between border-b border-dashed border-[#27272a] pb-4 mb-4">
             <div>
               <span className="text-xl font-black tracking-tight text-white">
-                i<span className="text-[#ff6600]">Movies</span>
+                i<span className="text-[#76b900]">Movies</span>
               </span>
               <p className="text-xs text-[#a1a1aa]">Verified Cinema Admission Pass</p>
             </div>
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 {booking.paymentStatus?.toUpperCase() || "CONFIRMED"}
               </span>
@@ -82,7 +82,7 @@ const DigitalTicketModal = ({ booking, onClose }) => {
               <p className="text-xs text-[#a1a1aa] mt-0.5">
                 {booking.movieDetails?.language} • {booking.movieDetails?.duration || "2h 30m"}
               </p>
-              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-[#ff6600]">
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-[#76b900]">
                 <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="font-semibold truncate">{booking.theatreDetails?.theatreName || "Multiplex Theatre"}</span>
               </div>
@@ -92,7 +92,7 @@ const DigitalTicketModal = ({ booking, onClose }) => {
           {/* Showtime & Venue Grid */}
           <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-[#18181f] border border-[#27272a] mb-5">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-[#76b900]/15 text-[#76b900] flex items-center justify-center">
                 <Calendar className="w-4 h-4" />
               </div>
               <div>
@@ -102,7 +102,7 @@ const DigitalTicketModal = ({ booking, onClose }) => {
             </div>
 
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-[#76b900]/15 text-[#76b900] flex items-center justify-center">
                 <Clock className="w-4 h-4" />
               </div>
               <div>
@@ -121,7 +121,7 @@ const DigitalTicketModal = ({ booking, onClose }) => {
               {booking.selectedSeats?.map((seat) => (
                 <span
                   key={seat}
-                  className="px-2.5 py-1 rounded bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/30 text-xs font-black tracking-wide"
+                  className="px-2.5 py-1 rounded bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30 text-xs font-black tracking-wide"
                 >
                   {seat}
                 </span>
@@ -133,7 +133,7 @@ const DigitalTicketModal = ({ booking, onClose }) => {
           <div className="flex items-center justify-between pt-3 border-t border-dashed border-[#27272a]">
             <div className="space-y-1">
               <p className="text-xs text-[#a1a1aa]">Total Amount Paid</p>
-              <p className="text-xl font-black text-[#ff6600]">₹{booking.totalAmount}</p>
+              <p className="text-xl font-black text-[#76b900]">₹{booking.totalAmount}</p>
               <p className="text-[10px] text-[#a1a1aa]">Booked by {booking.userEmail}</p>
             </div>
 

@@ -54,12 +54,12 @@ const Bookings = () => {
       <div className="bg-cinema-card border-b border-cinema-border/60 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30">
+            <div className="w-10 h-10 rounded-xl bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30">
               <Ticket className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-xs font-bold uppercase text-[#ff6600]">Tickets & Passes</span>
+                <span className="text-xs font-bold uppercase text-[#76b900]">Tickets & Passes</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-white">My Movie Tickets</h1>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -80,7 +80,7 @@ const Bookings = () => {
             </p>
             <Link
               to="/home"
-              className="px-6 py-3 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-lg shadow-[#ff6600]/30 transition-all inline-block"
+              className="px-6 py-3 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-lg shadow-[#76b900]/30 transition-all inline-block"
             >
               Explore Movies
             </Link>
@@ -184,7 +184,7 @@ const Bookings = () => {
                           <button
                             type="button"
                             onClick={() => setSelectedTicket(booking)}
-                            className="px-4 py-2 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-xs shadow-md shadow-[#ff6600]/20 flex items-center gap-1.5 transition-all"
+                            className="px-4 py-2 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-xs shadow-md shadow-[#76b900]/20 flex items-center gap-1.5 transition-all"
                           >
                             <Printer className="w-3.5 h-3.5" />
                             View Digital Pass

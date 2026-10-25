@@ -11,11 +11,11 @@ const Footer = () => {
           {/* Brand info */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30">
+              <div className="w-8 h-8 rounded-lg bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30">
                 <Film className="w-4 h-4" />
               </div>
               <span className="text-xl font-black text-white">
-                i<span className="text-[#ff6600]">Movies</span>
+                i<span className="text-[#76b900]">Movies</span>
               </span>
             </div>
             <p className="text-sm text-[#a1a1aa] leading-relaxed">
@@ -30,16 +30,16 @@ const Footer = () => {
             </h4>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link to="/home" className="hover:text-[#ff6600] transition-colors">Now Showing Movies</Link>
+                <Link to="/home" className="hover:text-[#76b900] transition-colors">Now Showing Movies</Link>
               </li>
               <li>
-                <Link to="/home" className="hover:text-[#ff6600] transition-colors">Popular Releases (TMDB)</Link>
+                <Link to="/home" className="hover:text-[#76b900] transition-colors">Popular Releases (TMDB)</Link>
               </li>
               <li>
-                <Link to="/favoriteshows" className="hover:text-[#ff6600] transition-colors">My Watchlist</Link>
+                <Link to="/favoriteshows" className="hover:text-[#76b900] transition-colors">My Watchlist</Link>
               </li>
               <li>
-                <Link to="/bookings" className="hover:text-[#ff6600] transition-colors">Digital Passes & QR</Link>
+                <Link to="/bookings" className="hover:text-[#76b900] transition-colors">Digital Passes & QR</Link>
               </li>
             </ul>
           </div>
@@ -82,7 +82,7 @@ const Footer = () => {
               <p className="text-[#a1a1aa]">
                 Encrypted end-to-end checkout with instant automated refunds on cancellation.
               </p>
-              <div className="pt-2 text-[11px] text-[#ff6600] font-semibold">
+              <div className="pt-2 text-[11px] text-[#76b900] font-semibold">
                 TTL Seat Locking & Real-Time Socket Availability
               </div>
             </div>

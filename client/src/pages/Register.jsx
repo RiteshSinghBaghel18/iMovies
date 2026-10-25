@@ -93,8 +93,8 @@ const Register = () => {
           {showOtpWindow ? (
             /* OTP Verification Window */
             <div className="py-2 space-y-5 animate-fade-in text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#ff6600]/15 text-[#ff6600] border border-[#ff6600]/30 shadow-lg">
-                <KeyRound className="w-8 h-8 text-[#ff6600]" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 shadow-lg">
+                <KeyRound className="w-8 h-8 text-[#76b900]" />
               </div>
 
               <div>
@@ -102,7 +102,7 @@ const Register = () => {
                 <p className="text-xs text-[#a1a1aa] mt-1">
                   We've generated a 6-digit code for:
                 </p>
-                <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#ff6600]">
+                <div className="mt-2 inline-block px-3 py-1 rounded-lg bg-[#09090b] border border-[#27272a] text-xs font-bold text-[#76b900]">
                   {email}
                 </div>
               </div>
@@ -156,7 +156,7 @@ const Register = () => {
                       value={otp}
                       onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
                       placeholder="• • • • • •"
-                      className="w-full bg-[#09090b] border-2 border-[#ff6600]/50 focus:border-[#ff6600] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all shadow-inner font-mono"
+                      className="w-full bg-[#09090b] border-2 border-[#76b900]/50 focus:border-[#76b900] rounded-2xl py-3.5 text-center text-2xl font-black tracking-[12px] text-white placeholder-slate-600 focus:outline-none transition-all shadow-inner font-mono"
                     />
                   </div>
                   <p className="text-[11px] text-[#a1a1aa] mt-1.5">
@@ -167,7 +167,7 @@ const Register = () => {
                 <button
                   type="submit"
                   disabled={otpLoading || otp.length !== 6}
-                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#76b900] hover:bg-[#8cd600] shadow-lg shadow-[#76b900]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>{otpLoading ? "Verifying Code..." : "Verify OTP & Continue"}</span>
@@ -179,9 +179,9 @@ const Register = () => {
                   type="button"
                   onClick={handleResend}
                   disabled={resending}
-                  className="text-xs text-[#a1a1aa] hover:text-[#ff6600] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  className="text-xs text-[#a1a1aa] hover:text-[#76b900] inline-flex items-center gap-1.5 transition-colors disabled:opacity-50"
                 >
-                  <Send className="w-3.5 h-3.5 text-[#ff6600]" />
+                  <Send className="w-3.5 h-3.5 text-[#76b900]" />
                   <span>{resending ? "Sending fresh OTP..." : "Didn't receive code? Resend OTP"}</span>
                 </button>
 
@@ -200,11 +200,11 @@ const Register = () => {
             <>
               <div className="text-center mb-8">
                 <div className="inline-flex items-center gap-2.5 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#ff6600]/15 text-[#ff6600] flex items-center justify-center border border-[#ff6600]/30 shadow-md">
+                  <div className="w-10 h-10 rounded-xl bg-[#76b900]/15 text-[#76b900] flex items-center justify-center border border-[#76b900]/30 shadow-md">
                     <Film className="w-5 h-5" />
                   </div>
                   <span className="text-2xl font-black text-white">
-                    i<span className="text-[#ff6600]">Movies</span>
+                    i<span className="text-[#76b900]">Movies</span>
                   </span>
                 </div>
                 <h2 className="text-xl font-bold text-white">
@@ -230,7 +230,7 @@ const Register = () => {
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="e.g. alex_harrison"
-                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                     />
                   </div>
                 </div>
@@ -248,7 +248,7 @@ const Register = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
-                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                     />
                   </div>
                 </div>
@@ -266,7 +266,7 @@ const Register = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#ff6600] transition-colors"
+                      className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
                     />
                     <button
                       type="button"
@@ -286,7 +286,7 @@ const Register = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#ff6600] hover:bg-[#ff7700] shadow-lg shadow-[#ff6600]/30 transition-all hover:scale-[1.02] disabled:opacity-50 mt-2"
+                  className="w-full py-3.5 px-4 rounded-xl font-black text-sm text-slate-950 bg-[#76b900] hover:bg-[#8cd600] shadow-lg shadow-[#76b900]/30 transition-all hover:scale-[1.02] disabled:opacity-50 mt-2"
                 >
                   {loading ? "Creating Account..." : "Create Account & Send OTP"}
                 </button>
@@ -294,7 +294,7 @@ const Register = () => {
 
               <div className="mt-6 text-center text-xs text-[#a1a1aa]">
                 Already have an account?{" "}
-                <Link to="/login" className="text-[#ff6600] hover:text-[#ff7700] font-bold transition-colors">
+                <Link to="/login" className="text-[#76b900] hover:text-[#8cd600] font-bold transition-colors">
                   Sign In
                 </Link>
               </div>

@@ -66,7 +66,7 @@ const ResetPassword = () => {
           
           {/* Logo & Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-600 to-orange-500 shadow-lg shadow-amber-600/30 mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#5c9200] to-[#76b900] shadow-lg shadow-[#76b900]/30 mb-4">
               <KeyRound className="w-6 h-6 text-white" />
             </div>
             <h2 className="text-2xl font-black text-white">Create New Password</h2>
@@ -141,7 +141,7 @@ const ResetPassword = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#ff6600] transition-colors"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#76b900] transition-colors"
                   />
                   <button
                     type="button"
@@ -171,7 +171,7 @@ const ResetPassword = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#ff6600] transition-colors"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#76b900] transition-colors"
                   />
                   <button
                     type="button"

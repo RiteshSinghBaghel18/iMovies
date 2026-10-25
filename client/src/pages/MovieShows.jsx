@@ -89,7 +89,7 @@ const MovieShows = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             to={`/moviedetails/${movieId}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#ff6600] mb-3 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#a1a1aa] hover:text-[#76b900] mb-3 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Movie Overview
@@ -98,7 +98,7 @@ const MovieShows = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs uppercase font-bold text-[#ff6600] tracking-wider">
+                <span className="text-xs uppercase font-bold text-[#76b900] tracking-wider">
                   Theatrical Box Office
                 </span>
               </div>
@@ -111,7 +111,7 @@ const MovieShows = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-md bg-[#18181f] text-[#ff6600] border border-[#27272a] text-xs font-bold uppercase">
+              <span className="px-3 py-1 rounded-md bg-[#18181f] text-[#76b900] border border-[#27272a] text-xs font-bold uppercase">
                 {movie?.certification || "U/A"}
               </span>
               <span className="px-3 py-1 rounded-md bg-[#18181f] text-slate-300 border border-[#27272a] text-xs font-bold">
@@ -128,7 +128,7 @@ const MovieShows = () => {
         <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-4 mb-8 shadow-lg">
           <div className="flex items-center gap-3 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
             <span className="text-xs font-bold uppercase tracking-wider text-[#a1a1aa] flex items-center gap-1.5 mr-2 flex-shrink-0">
-              <Calendar className="w-4 h-4 text-[#ff6600]" />
+              <Calendar className="w-4 h-4 text-[#76b900]" />
               <span>Select Date:</span>
             </span>
 
@@ -140,8 +140,8 @@ const MovieShows = () => {
                   onClick={() => setSelectedDate(d.dateStr)}
                   className={`flex flex-col items-center justify-center min-w-[80px] py-2.5 px-4 rounded-xl border transition-all ${
                     isSelected
-                      ? "bg-[#ff6600] border-[#ff6600] text-slate-950 font-black shadow-lg shadow-[#ff6600]/30 scale-105"
-                      : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:text-white hover:border-[#ff6600]/50"
+                      ? "bg-[#76b900] border-[#76b900] text-slate-950 font-black shadow-lg shadow-[#76b900]/30 scale-105"
+                      : "bg-[#18181f] border-[#27272a] text-[#a1a1aa] hover:text-white hover:border-[#76b900]/50"
                   }`}
                 >
                   <span className={`text-[10px] uppercase tracking-wider ${isSelected ? "text-slate-900 font-extrabold" : "text-[#a1a1aa]"}`}>
@@ -161,7 +161,7 @@ const MovieShows = () => {
         <div className="flex flex-wrap items-center justify-between text-xs text-[#a1a1aa] mb-6 px-2">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#ff6600]"></span>
+              <span className="w-3 h-3 rounded-full bg-[#76b900]"></span>
               Available for Booking
             </span>
             <span className="flex items-center gap-2">
@@ -191,17 +191,17 @@ const MovieShows = () => {
               return (
                 <div
                   key={theatreGroup.theatreName}
-                  className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 shadow-md space-y-4 hover:border-[#ff6600]/40 transition-colors"
+                  className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 shadow-md space-y-4 hover:border-[#76b900]/40 transition-colors"
                 >
                   {/* Theatre Header */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#27272a] pb-4">
                     <div className="space-y-1">
                       <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#ff6600]" />
+                        <MapPin className="w-4 h-4 text-[#76b900]" />
                         {theatreGroup.theatreName}
                       </h3>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-[#a1a1aa]">
-                        <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-[#ff6600] font-semibold">
+                        <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-[#76b900] font-semibold">
                           4K Laser
                         </span>
                         <span className="px-2 py-0.5 rounded bg-[#18181f] border border-[#27272a] text-amber-400 font-semibold">
@@ -258,20 +258,20 @@ const MovieShows = () => {
                           );
                         }
 
-                        // Upcoming active show: render clickable card with orange accents
+                        // Upcoming active show: render clickable card with NVIDIA green accents
                         return (
                           <Link
                             key={show.showId}
                             to={`/seatslug/${show.showId}`}
-                            className="group relative px-5 py-3 rounded-xl bg-[#18181f] border border-[#27272a] hover:border-[#ff6600] hover:bg-[#ff6600]/10 transition-all shadow-md flex flex-col items-center min-w-[120px] hover:scale-105"
+                            className="group relative px-5 py-3 rounded-xl bg-[#18181f] border border-[#27272a] hover:border-[#76b900] hover:bg-[#76b900]/10 transition-all shadow-md flex flex-col items-center min-w-[120px] hover:scale-105"
                           >
-                            <span className="text-sm font-black text-slate-100 group-hover:text-[#ff6600] transition-colors">
+                            <span className="text-sm font-black text-slate-100 group-hover:text-[#76b900] transition-colors">
                               {show.showTime}
                             </span>
                             <span className="text-[10px] text-[#a1a1aa] mt-0.5">
                               From ₹{show.pricing?.lower || 150}
                             </span>
-                            <span className="text-[9px] px-2 py-0.5 rounded bg-[#ff6600]/20 text-[#ff6600] border border-[#ff6600]/30 uppercase font-black tracking-wider mt-1.5 flex items-center gap-1">
+                            <span className="text-[9px] px-2 py-0.5 rounded bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30 uppercase font-black tracking-wider mt-1.5 flex items-center gap-1">
                               <Ticket className="w-2.5 h-2.5" />
                               <span>Select Seats</span>
                             </span>

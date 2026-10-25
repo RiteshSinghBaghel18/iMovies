@@ -200,7 +200,7 @@ const MovieDetails = () => {
               <div className="flex flex-wrap items-center gap-4 pt-4">
                 <Link
                   to={`/movieshows/${movie._id}`}
-                  className="px-8 py-3.5 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-xl shadow-[#ff6600]/30 flex items-center gap-2 hover:scale-105 transition-all"
+                  className="px-8 py-3.5 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-xl shadow-[#76b900]/30 flex items-center gap-2 hover:scale-105 transition-all"
                 >
                   <Ticket className="w-5 h-5" />
                   <span>Book Theatrical Tickets</span>
@@ -213,7 +213,7 @@ const MovieDetails = () => {
                   className={`px-5 py-3.5 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all ${
                     isFavorite
                       ? "bg-rose-500/15 border-rose-500 text-rose-400"
-                      : "bg-[#18181f] border-[#27272a] text-slate-300 hover:border-[#ff6600]/50"
+                      : "bg-[#18181f] border-[#27272a] text-slate-300 hover:border-[#76b900]/50"
                   }`}
                 >
                   <Heart className={`w-4 h-4 ${isFavorite ? "fill-rose-500 text-rose-500" : ""}`} />
@@ -224,9 +224,9 @@ const MovieDetails = () => {
                   href={movie.trailerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-5 py-3.5 rounded-xl bg-[#18181f] border border-[#27272a] text-slate-300 hover:border-[#ff6600]/50 text-sm font-semibold flex items-center gap-2 transition-all"
+                  className="px-5 py-3.5 rounded-xl bg-[#18181f] border border-[#27272a] text-slate-300 hover:border-[#76b900]/50 text-sm font-semibold flex items-center gap-2 transition-all"
                 >
-                  <Play className="w-4 h-4 text-[#ff6600]" />
+                  <Play className="w-4 h-4 text-[#76b900]" />
                   <span>Watch Trailer</span>
                 </a>
               </div>
@@ -343,7 +343,7 @@ const MovieDetails = () => {
                   <button
                     type="submit"
                     disabled={submittingReview || !isAuthenticated || !reviewText.trim()}
-                    className="px-5 py-2.5 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-[#ff6600]/20 transition-all disabled:opacity-40"
+                    className="px-5 py-2.5 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-[#76b900]/20 transition-all disabled:opacity-40"
                   >
                     <Send className="w-3.5 h-3.5" />
                     <span>{submittingReview ? "Posting..." : "Post Review"}</span>
@@ -428,7 +428,7 @@ const MovieDetails = () => {
               <div className="pt-2">
                 <Link
                   to={`/movieshows/${movie._id}`}
-                  className="w-full py-3.5 rounded-xl bg-[#ff6600] hover:bg-[#ff7700] text-slate-950 font-black text-sm shadow-xl shadow-[#ff6600]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                  className="w-full py-3.5 rounded-xl bg-[#76b900] hover:bg-[#8cd600] text-slate-950 font-black text-sm shadow-xl shadow-[#76b900]/30 flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
                 >
                   <Ticket className="w-4 h-4" />
                   <span>Select Theatre & Showtime</span>

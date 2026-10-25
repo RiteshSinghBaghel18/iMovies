@@ -8,21 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Vibrant Orange, Pitch Black & Clean White Palette
+        // NVIDIA Green (#76b900), Pitch Black & Clean White Palette
         primary: {
-          DEFAULT: '#ff6600',
-          hover: '#ff7700',
-          glow: 'rgba(255, 102, 0, 0.35)',
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#ff6600',
-          600: '#ff7700',
-          700: '#ea580c',
-          800: '#c2410c',
-          900: '#9a3412',
+          DEFAULT: '#76b900',
+          hover: '#8cd600',
+          glow: 'rgba(118, 185, 0, 0.4)',
+          50: '#f4fbe8',
+          100: '#e6f7cb',
+          200: '#d0efa0',
+          300: '#b4e36d',
+          400: '#98d438',
+          500: '#76b900',
+          600: '#8cd600',
+          700: '#5c9200',
+          800: '#3d5e07',
+          900: '#344f0a',
         },
         dark: {
           DEFAULT: '#09090b',
@@ -32,9 +32,9 @@ export default {
           600: '#272730',
         },
         card: '#121216',
-        accent: '#ff6600',
+        accent: '#76b900',
 
-        // Unified Cinema / Prime Classes Mapped Directly to Orange & Black
+        // Unified Cinema / Prime Classes Mapped Directly to NVIDIA Green & Black
         prime: {
           darkest: '#000000', // Pitch Black
           dark: '#0a0a0a',    // Dark obsidian surface
@@ -42,10 +42,10 @@ export default {
           card: '#121216',
           cardHover: '#1c1c24',
           border: '#27272a',  // Subtle zinc border
-          blue: '#ff6600',    // Signature Vibrant Orange
-          blueHover: '#ff7700',
-          blueDark: '#ea580c',
-          gold: '#ffaa00',    // Warm Amber Gold
+          blue: '#76b900',    // Signature NVIDIA Green
+          blueHover: '#8cd600',
+          blueDark: '#5c9200',
+          gold: '#76b900',    // NVIDIA Green Accent
           muted: '#a1a1aa',   // Muted slate text
         },
         cinema: {
@@ -54,21 +54,23 @@ export default {
           surface: '#121216',
           card: '#121216',
           border: '#27272a',
-          red: '#ff6600',      // Signature Vibrant Orange
-          redHover: '#ff7700',
-          gold: '#ffaa00',
+          red: '#76b900',      // Signature NVIDIA Green
+          redHover: '#8cd600',
+          gold: '#76b900',
         }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       boxShadow: {
-        'glow-prime': '0 0 25px -4px rgba(255, 102, 0, 0.45)',
-        'glow-cyan': '0 0 20px -3px rgba(255, 102, 0, 0.4)',
-        'glow-orange': '0 0 25px -4px rgba(255, 102, 0, 0.45)',
-        'glow-gold': '0 0 20px -3px rgba(255, 170, 0, 0.4)',
-        'orange-glow': '0 0 25px rgba(255, 102, 0, 0.35)',
-        'orange-sm': '0 0 12px rgba(255, 102, 0, 0.25)',
+        'glow-prime': '0 0 25px -4px rgba(118, 185, 0, 0.45)',
+        'glow-cyan': '0 0 20px -3px rgba(118, 185, 0, 0.4)',
+        'glow-orange': '0 0 25px -4px rgba(118, 185, 0, 0.45)',
+        'glow-green': '0 0 25px -4px rgba(118, 185, 0, 0.45)',
+        'glow-gold': '0 0 20px -3px rgba(118, 185, 0, 0.4)',
+        'orange-glow': '0 0 25px rgba(118, 185, 0, 0.35)',
+        'orange-sm': '0 0 12px rgba(118, 185, 0, 0.25)',
+        'nvidia-glow': '0 0 25px rgba(118, 185, 0, 0.45)',
       }
     },
   },
