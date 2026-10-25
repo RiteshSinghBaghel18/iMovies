@@ -56,7 +56,7 @@ const movieSchema = new mongoose.Schema(
       default: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     },
     cast: {
-      type: [String],
+      type: [mongoose.Schema.Types.Mixed],
       default: [],
     },
     director: {

@@ -15,10 +15,33 @@ import {
   Send, 
   Sparkles,
   Check,
-  Film
+  Film,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { toast } from "react-toastify";
 import { useAuth } from "../context/AuthContext";
+
+const getYouTubeVideoId = (url) => {
+  if (!url || typeof url !== "string") return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return match ? match[1] : null;
+};
+
+const parseCastMember = (actor) => {
+  if (typeof actor === "object" && actor !== null) {
+    const name = actor.name || "Actor";
+    const character = actor.character || "";
+    const profileUrl = actor.profileUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=18181f&color=76b900&bold=true&size=200`;
+    return { name, character, profileUrl };
+  }
+  const name = typeof actor === "string" ? actor : "Actor";
+  return {
+    name,
+    character: "",
+    profileUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=18181f&color=76b900&bold=true&size=200`,
+  };
+};
 
 const MovieDetails = () => {
   const { movieId } = useParams();
@@ -37,6 +60,8 @@ const MovieDetails = () => {
 
   // Trailer modal state
   const [showTrailer, setShowTrailer] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const [trailerFailed, setTrailerFailed] = useState(false);
 
   const movie = movieData?.movie;
   const reviews = reviewData?.reviews || [];
@@ -127,16 +152,58 @@ const MovieDetails = () => {
     <div className="min-h-screen bg-cinema-darkest text-slate-100 pb-20">
       
       {/* Backdrop Hero Header */}
-      <div className="relative min-h-[460px] lg:h-[520px] flex items-end overflow-hidden border-b border-cinema-border/40">
-        <div className="absolute inset-0 z-0">
-          <img
-            src={movie.bannerUrl || movie.posterUrl}
-            alt={movie.movieName}
-            className="w-full h-full object-cover object-top opacity-30 filter blur-[0.5px]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-cinema-darkest via-cinema-darkest/75 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-cinema-darkest via-cinema-darkest/80 to-transparent" />
+      <div className="relative min-h-[460px] lg:h-[540px] flex items-end overflow-hidden border-b border-cinema-border/40">
+        
+        {/* Background Trailer with Image Fallback */}
+        <div className="absolute inset-0 z-0 overflow-hidden bg-black">
+          {getYouTubeVideoId(movie.trailerUrl) && !trailerFailed ? (
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${getYouTubeVideoId(movie.trailerUrl)}?autoplay=1&mute=${isMuted ? "1" : "0"}&controls=0&loop=1&playlist=${getYouTubeVideoId(movie.trailerUrl)}&showinfo=0&rel=0&iv_load_policy=3&disablekb=1&modestbranding=1&playsinline=1`}
+                title={`${movie.movieName} Ambient Trailer`}
+                className="w-[140%] h-[140%] -ml-[20%] -mt-[10%] object-cover opacity-55 scale-105 pointer-events-none"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                onError={() => setTrailerFailed(true)}
+              />
+            </div>
+          ) : (
+            <img
+              src={movie.bannerUrl || movie.posterUrl}
+              alt={movie.movieName}
+              className="w-full h-full object-cover object-top opacity-35 filter blur-[0.5px]"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-cinema-darkest via-cinema-darkest/75 to-transparent hero-backdrop-overlay pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-cinema-darkest via-cinema-darkest/80 to-transparent hero-side-overlay pointer-events-none" />
         </div>
+
+        {/* Ambient Trailer Audio Toggle Pill */}
+        {getYouTubeVideoId(movie.trailerUrl) && !trailerFailed && (
+          <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-[#27272a] text-[11px] font-bold text-[#76b900]">
+              <span className="w-2 h-2 rounded-full bg-[#76b900] animate-pulse" />
+              Live Trailer In Background
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsMuted(!isMuted)}
+              className="px-3 py-1.5 rounded-full bg-black/70 hover:bg-black/90 backdrop-blur-md border border-[#27272a] hover:border-[#76b900]/50 text-xs font-bold text-white flex items-center gap-1.5 transition-all shadow-lg"
+              title={isMuted ? "Unmute Trailer Audio" : "Mute Trailer Audio"}
+            >
+              {isMuted ? (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Audio Muted</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-[#76b900]" />
+                  <span className="text-[#76b900]">Playing Audio</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
           <div className="flex flex-col md:flex-row gap-8 items-start md:items-end">
@@ -254,30 +321,58 @@ const MovieDetails = () => {
 
             {/* Cast & Crew Card */}
             <div className="bg-cinema-card border border-cinema-border rounded-2xl p-6 sm:p-8">
-              <h3 className="text-xl font-bold text-white mb-4">Cast & Crew</h3>
-              <div className="space-y-4">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <User className="w-5 h-5 text-[#76b900]" />
+                <span>Featured Cast & Crew</span>
+              </h3>
+
+              <div className="space-y-6">
                 <div>
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Director</p>
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 flex items-center justify-center font-bold text-xs">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Directed By</p>
+                  <div className="inline-flex items-center gap-3 p-2.5 pr-5 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="w-10 h-10 rounded-full bg-[#76b900]/20 text-[#76b900] flex items-center justify-center font-bold text-sm border border-[#76b900]/40">
                       {movie.director?.charAt(0) || "D"}
                     </div>
-                    <span className="text-sm font-bold text-white">{movie.director || "Unknown"}</span>
+                    <div>
+                      <p className="text-sm font-bold text-white">{movie.director || "Unknown"}</p>
+                      <p className="text-[11px] text-slate-400">Director & Creative Lead</p>
+                    </div>
                   </div>
                 </div>
 
                 {movie.cast && movie.cast.length > 0 && (
                   <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Starring Cast</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {movie.cast.map((actor) => (
-                        <div key={actor} className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-center">
-                          <div className="w-10 h-10 rounded-full bg-red-500/10 text-red-400 mx-auto flex items-center justify-center font-bold text-sm mb-1.5 border border-red-500/20">
-                            {actor.charAt(0)}
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4">Starring Cast</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {movie.cast.map((actor, idx) => {
+                        const { name, character, profileUrl } = parseCastMember(actor);
+                        return (
+                          <div
+                            key={`${name}-${idx}`}
+                            className="group p-4 rounded-2xl bg-slate-900/90 border border-slate-800 hover:border-[#76b900]/60 transition-all text-center flex flex-col items-center"
+                          >
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden mb-3 border-2 border-slate-700 group-hover:border-[#76b900] transition-colors shadow-lg bg-slate-950 flex-shrink-0">
+                              <img
+                                src={profileUrl}
+                                alt={name}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=18181f&color=76b900&bold=true&size=200`;
+                                }}
+                                className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                            <p className="text-xs font-bold text-white group-hover:text-[#76b900] transition-colors line-clamp-1">
+                              {name}
+                            </p>
+                            {character && (
+                              <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
+                                as {character}
+                              </p>
+                            )}
                           </div>
-                          <p className="text-xs font-semibold text-white truncate">{actor}</p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

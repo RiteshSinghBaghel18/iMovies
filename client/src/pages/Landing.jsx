@@ -13,14 +13,34 @@ import {
 } from "lucide-react";
 import useFetch from "../hooks/useFetch";
 
+// Check if a movie is released
+const isMovieReleased = (movie) => {
+  if (!movie.releaseDate) return true;
+  const release = new Date(movie.releaseDate);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return release <= today;
+};
+
 const Landing = () => {
   const { data } = useFetch("/movie");
-  const trendingMovies = data?.movies?.slice(0, 4) || [];
+  const allMovies = data?.movies || [];
+
+  // Partition movies into In Theatres vs Upcoming
+  const inTheatresMovies = allMovies.filter((m) => {
+    if (m.isAdminAdded || m.isCustom) return isMovieReleased(m);
+    return m.category === "now_playing" || isMovieReleased(m);
+  }).slice(0, 4);
+
+  const upcomingMovies = allMovies.filter((m) => {
+    if (m.isAdminAdded || m.isCustom) return !isMovieReleased(m);
+    return m.category === "upcoming" || !isMovieReleased(m);
+  }).slice(0, 4);
 
   return (
     <div className="min-h-screen bg-[#000000] text-slate-100 flex flex-col">
       
-      {/* Hero Visual Section - Amazon Prime Replica */}
+      {/* Hero Visual Section */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden border-b border-[#27272a]/60">
         
         {/* Dynamic Backdrop Background with Vignette */}
@@ -31,8 +51,8 @@ const Landing = () => {
             className="w-full h-full object-cover opacity-25 scale-105 filter blur-[1px]"
           />
           <div className="absolute inset-0 hero-backdrop-overlay bg-gradient-to-t from-[#000000] via-[#000000]/80 to-transparent" />
-          <div className="absolute inset-0 hero-side-overlay bg-gradient-to-r from-[#000000] via-[#000000]/70 to-[#000000]" rationale="light-adaptive" />
-          {/* Prime Cyan Ambient Glow */}
+          <div className="absolute inset-0 hero-side-overlay bg-gradient-to-r from-[#000000] via-[#000000]/70 to-[#000000]" />
+          {/* Ambient Glow */}
           <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[650px] h-[320px] bg-[#76b900]/15 rounded-full blur-[140px] pointer-events-none" />
         </div>
 
@@ -50,7 +70,7 @@ const Landing = () => {
             Welcome to <span className="text-[#76b900]">iMovies</span>
           </h1>
 
-          {/* Description specified in requirements */}
+          {/* Description */}
           <p className="landing-hero-desc mt-6 text-lg sm:text-xl text-[#a1a1aa] max-w-3xl mx-auto font-normal leading-relaxed">
             Your ultimate destination for the latest blockbusters and timeless classics. Real-time seat locking, instant digital passes, and IMAX luxury at your fingertips.
           </p>
@@ -82,42 +102,42 @@ const Landing = () => {
             </div>
             <div>
               <p className="text-2xl sm:text-3xl font-extrabold text-[#76b900]">10 Min</p>
-              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">TTL Seat Lock</p>
+              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">TTL Seat Hold</p>
             </div>
             <div>
               <p className="text-2xl sm:text-3xl font-extrabold text-emerald-400">Instant</p>
-              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">QR E-Tickets</p>
+              <p className="text-xs text-[#a1a1aa] mt-1 uppercase tracking-wider">Digital Passes</p>
             </div>
           </div>
 
         </div>
       </section>
 
-      {/* Featured Blockbusters Showcase */}
-      {trendingMovies.length > 0 && (
-        <section className="py-20 bg-[#000000] border-b border-[#27272a]/60">
+      {/* SECTION 1: NOW IN THEATRES SHOWCASE */}
+      {inTheatresMovies.length > 0 && (
+        <section className="py-16 bg-[#000000] border-b border-[#27272a]/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
               <div>
-                <div className="flex items-center gap-2 text-[#76b900] font-bold text-xs uppercase tracking-widest mb-2">
-                  <Flame className="w-4 h-4" />
-                  <span>Trending Highlights</span>
+                <div className="flex items-center gap-2 text-[#76b900] font-bold text-xs uppercase tracking-widest mb-1">
+                  <Film className="w-4 h-4" />
+                  <span>Now Showing</span>
                 </div>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
-                  Now Captivating Audiences
+                  Currently in Theatres
                 </h2>
               </div>
               <Link
                 to="/home"
                 className="mt-4 md:mt-0 text-sm font-semibold text-[#76b900] hover:text-[#8cd600] flex items-center gap-1.5 transition-colors"
               >
-                <span>View all titles</span>
+                <span>View all in theatres</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {trendingMovies.map((movie) => (
+              {inTheatresMovies.map((movie) => (
                 <Link
                   key={movie._id}
                   to={`/moviedetails/${movie._id}`}
@@ -151,7 +171,76 @@ const Landing = () => {
                     <div className="mt-4 pt-3 border-t border-[#27272a] flex items-center justify-between text-xs">
                       <span className="text-[#a1a1aa]">{movie.language}</span>
                       <span className="text-[#76b900] font-bold group-hover:translate-x-1 transition-transform">
-                        Book Now →
+                        Book Seats →
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 2: UPCOMING THEATRICAL RELEASES SHOWCASE */}
+      {upcomingMovies.length > 0 && (
+        <section className="py-16 bg-[#000000] border-b border-[#27272a]/60">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-10">
+              <div>
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-widest mb-1">
+                  <Clock className="w-4 h-4" />
+                  <span>Coming Soon</span>
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">
+                  Upcoming Theatrical Blockbusters
+                </h2>
+              </div>
+              <Link
+                to="/home"
+                className="mt-4 md:mt-0 text-sm font-semibold text-amber-400 hover:text-amber-300 flex items-center gap-1.5 transition-colors"
+              >
+                <span>Explore all upcoming</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {upcomingMovies.map((movie) => (
+                <Link
+                  key={movie._id}
+                  to={`/moviedetails/${movie._id}`}
+                  className="group bg-[#121216] rounded-xl overflow-hidden border border-[#27272a] hover:border-amber-400/70 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-amber-500/10 flex flex-col"
+                >
+                  <div className="relative aspect-[2/3] overflow-hidden bg-[#18181f]">
+                    <img
+                      src={movie.posterUrl}
+                      alt={movie.movieName}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/75 backdrop-blur-md text-amber-400 text-xs font-bold flex items-center gap-1 border border-amber-500/20">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span>{new Date(movie.releaseDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    </div>
+                    <div className="absolute bottom-3 left-3 px-2 py-0.5 rounded bg-amber-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                      Upcoming
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3 className="font-bold text-base text-white group-hover:text-amber-400 transition-colors line-clamp-1">
+                        {movie.movieName}
+                      </h3>
+                      <p className="text-xs text-[#a1a1aa] mt-1 line-clamp-1">
+                        {movie.genres?.join(", ")} • {movie.language}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-[#27272a] flex items-center justify-between text-xs">
+                      <span className="text-[#a1a1aa]">{movie.language}</span>
+                      <span className="text-amber-400 font-bold group-hover:translate-x-1 transition-transform">
+                        Explore Info →
                       </span>
                     </div>
                   </div>

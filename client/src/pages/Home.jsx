@@ -13,20 +13,29 @@ import {
   Play, 
   Flame,
   Film,
-  Compass
+  Compass,
+  ArrowRight
 } from "lucide-react";
+
+// Check if a movie is already released (date <= today)
+const isMovieReleased = (movie) => {
+  if (!movie.releaseDate) return true;
+  const release = new Date(movie.releaseDate);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
+  return release <= today;
+};
 
 const Home = () => {
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All"); // "All" | "now_playing" | "upcoming" | "admin"
+  const [selectedCategory, setSelectedCategory] = useState("All"); // "All" | "now_playing" | "upcoming"
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [selectedLanguage, setSelectedLanguage] = useState("All");
 
   const { data, loading, error } = useFetch("/movie");
-
   const movies = data?.movies || [];
 
-  // Distinct genres and languages
+  // Distinct genres and languages for filter dropdowns
   const genresList = useMemo(() => {
     const set = new Set();
     movies.forEach((m) => m.genres?.forEach((g) => set.add(g)));
@@ -41,52 +50,82 @@ const Home = () => {
     return ["All", ...Array.from(set)];
   }, [movies]);
 
-  // Counts for Category Pills
-  const counts = useMemo(() => {
-    const nowPlaying = movies.filter((m) => m.category === "now_playing" || m.isAdminAdded || m.isCustom).length;
-    const upcoming = movies.filter((m) => m.category === "upcoming").length;
-    const admin = movies.filter((m) => m.isAdminAdded || m.isCustom).length;
-    return {
-      all: movies.length,
-      nowPlaying,
-      upcoming,
-      admin,
-    };
+  // Split all movies into (1) In Theatres vs (2) Upcoming Releases
+  // Admin-added movies are placed into either section based on releaseDate, prioritized at the top
+  const { inTheatresList, upcomingList } = useMemo(() => {
+    const inTheatres = [];
+    const upcoming = [];
+
+    movies.forEach((m) => {
+      const released = isMovieReleased(m);
+      if (m.isAdminAdded || m.isCustom) {
+        // Admin movie categorized strictly by release date
+        if (released) {
+          inTheatres.push(m);
+        } else {
+          upcoming.push(m);
+        }
+      } else {
+        // TMDB movies categorized by category & release status
+        if (m.category === "upcoming" && !released) {
+          upcoming.push(m);
+        } else {
+          inTheatres.push(m);
+        }
+      }
+    });
+
+    // Sort: Admin-added movies always at the front of each section
+    inTheatres.sort((a, b) => {
+      const aAdmin = a.isAdminAdded || a.isCustom ? 1 : 0;
+      const bAdmin = b.isAdminAdded || b.isCustom ? 1 : 0;
+      if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+      return new Date(b.releaseDate || 0) - new Date(a.releaseDate || 0);
+    });
+
+    upcoming.sort((a, b) => {
+      const aAdmin = a.isAdminAdded || a.isCustom ? 1 : 0;
+      const bAdmin = b.isAdminAdded || b.isCustom ? 1 : 0;
+      if (aAdmin !== bAdmin) return bAdmin - aAdmin;
+      return new Date(a.releaseDate || 0) - new Date(b.releaseDate || 0);
+    });
+
+    return { inTheatresList: inTheatres, upcomingList: upcoming };
   }, [movies]);
 
-  // Filtered movies based on category, search, genre, language
-  const filteredMovies = useMemo(() => {
-    return movies.filter((m) => {
-      // 1. Search filter (in-memory matching; searches are strictly NOT logged or saved)
-      const matchSearch =
-        m.movieName?.toLowerCase().includes(search.toLowerCase()) ||
-        m.description?.toLowerCase().includes(search.toLowerCase()) ||
-        m.genres?.some((g) => g.toLowerCase().includes(search.toLowerCase())) ||
-        m.cast?.some((c) => c.toLowerCase().includes(search.toLowerCase())) ||
-        m.director?.toLowerCase().includes(search.toLowerCase());
-
-      // 2. Category tab filter
-      let matchCategory = true;
-      if (selectedCategory === "now_playing") {
-        matchCategory = m.category === "now_playing" || m.isAdminAdded || m.isCustom;
-      } else if (selectedCategory === "upcoming") {
-        matchCategory = m.category === "upcoming";
-      } else if (selectedCategory === "admin") {
-        matchCategory = m.isAdminAdded || m.isCustom;
+  // Common filter helper for search, genre, and language
+  const filterMovieMatches = (m) => {
+    const q = search.toLowerCase().trim();
+    if (q) {
+      const matchName = m.movieName?.toLowerCase().includes(q);
+      const matchDesc = m.description?.toLowerCase().includes(q);
+      const matchGenre = m.genres?.some((g) => g.toLowerCase().includes(q));
+      const matchCast = m.cast?.some((c) => {
+        const castName = typeof c === "string" ? c : c.name || "";
+        return castName.toLowerCase().includes(q);
+      });
+      const matchDirector = m.director?.toLowerCase().includes(q);
+      if (!matchName && !matchDesc && !matchGenre && !matchCast && !matchDirector) {
+        return false;
       }
+    }
 
-      // 3. Genre filter
-      const matchGenre = selectedGenre === "All" || m.genres?.includes(selectedGenre);
+    if (selectedGenre !== "All" && !m.genres?.includes(selectedGenre)) {
+      return false;
+    }
 
-      // 4. Language filter
-      const matchLang = selectedLanguage === "All" || m.language?.toLowerCase() === selectedLanguage.toLowerCase();
+    if (selectedLanguage !== "All" && m.language?.toLowerCase() !== selectedLanguage.toLowerCase()) {
+      return false;
+    }
 
-      return matchSearch && matchCategory && matchGenre && matchLang;
-    });
-  }, [movies, search, selectedCategory, selectedGenre, selectedLanguage]);
+    return true;
+  };
 
-  // Featured Hero movie (top movie, which places Admin-added movies first)
-  const featuredMovie = movies[0];
+  const filteredInTheatres = useMemo(() => inTheatresList.filter(filterMovieMatches), [inTheatresList, search, selectedGenre, selectedLanguage]);
+  const filteredUpcoming = useMemo(() => upcomingList.filter(filterMovieMatches), [upcomingList, search, selectedGenre, selectedLanguage]);
+
+  // Featured Spotlight movie (placed from top in-theatres movie or first movie)
+  const featuredMovie = inTheatresList[0] || movies[0];
 
   if (loading) {
     return <Loader message="Connecting to iMovies Box Office..." />;
@@ -100,6 +139,108 @@ const Home = () => {
       </div>
     );
   }
+
+  // Render a movie card
+  const renderMovieCard = (movie) => {
+    const isAdmin = movie.isAdminAdded || movie.isCustom;
+    const isUpcoming = !isMovieReleased(movie) || movie.category === "upcoming";
+
+    return (
+      <div
+        key={movie._id}
+        className={`group bg-[#121216] rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex flex-col justify-between ${
+          isAdmin 
+            ? "border-[#76b900]/60 hover:border-[#76b900] hover:shadow-[#76b900]/20" 
+            : "border-[#27272a] hover:border-[#76b900]/70 hover:shadow-[#76b900]/10"
+        }`}
+      >
+        {/* Poster Container */}
+        <Link to={`/moviedetails/${movie._id}`} className="relative aspect-[2/3] overflow-hidden bg-[#18181f] block">
+          <img
+            src={movie.posterUrl}
+            alt={movie.movieName}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+
+          {/* Prominent Category Badge on Top Left */}
+          <div className="absolute top-2 left-2 z-10">
+            {isAdmin ? (
+              <div className="px-2 py-0.5 rounded-md bg-[#76b900] text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md shadow-[#76b900]/30">
+                <Star className="w-2.5 h-2.5 fill-slate-950" />
+                <span>Admin Premiere</span>
+              </div>
+            ) : isUpcoming ? (
+              <div className="px-2 py-0.5 rounded-md bg-amber-500/90 backdrop-blur-sm text-slate-950 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                <Clock className="w-2.5 h-2.5" />
+                <span>Upcoming</span>
+              </div>
+            ) : (
+              <div className="px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-sm border border-[#27272a] text-[#76b900] text-[9px] font-bold uppercase tracking-wider">
+                In Theatres
+              </div>
+            )}
+          </div>
+
+          {/* Rating badge on Top Right */}
+          <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[#f59e0b] text-[10px] font-bold flex items-center gap-0.5 border border-[#f59e0b]/20 shadow-sm">
+            <Star className="w-3 h-3 fill-[#f59e0b] text-[#f59e0b]" />
+            <span>{movie.rating}</span>
+          </div>
+
+          {/* Certification */}
+          <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-[#18181f]/90 border border-[#27272a] text-white text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm">
+            {movie.certification || "U/A"}
+          </div>
+        </Link>
+
+        {/* Info Container */}
+        <div className="p-3 flex-1 flex flex-col justify-between">
+          <div>
+            <Link to={`/moviedetails/${movie._id}`}>
+              <h3 
+                className="font-bold text-xs sm:text-sm text-white group-hover:text-[#76b900] transition-colors truncate" 
+                title={movie.movieName}
+              >
+                {movie.movieName}
+              </h3>
+            </Link>
+            <p className="text-[10px] text-[#a1a1aa] mt-0.5 truncate">
+              {movie.genres?.join(", ")}
+            </p>
+            <div className="flex items-center gap-1.5 text-[10px] text-[#a1a1aa] mt-1.5 truncate">
+              <span>{movie.duration}</span>
+              <span>•</span>
+              <span>{movie.language}</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="mt-3 pt-2 border-t border-[#27272a] flex items-center gap-1.5">
+            <Link
+              to={`/movieshows/${movie._id}`}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-slate-950 text-[11px] font-black text-center shadow-sm transition-all flex items-center justify-center gap-1 ${
+                isAdmin 
+                  ? "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/30"
+                  : isUpcoming
+                  ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
+                  : "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/20"
+              }`}
+            >
+              <Ticket className="w-3 h-3" />
+              <span>{isUpcoming ? "Advance Tickets" : "Book Seats"}</span>
+            </Link>
+            <Link
+              to={`/moviedetails/${movie._id}`}
+              className="py-1.5 px-2 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] text-slate-300 text-[11px] font-semibold text-center transition-all"
+            >
+              Info
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#000000] text-slate-100 pb-20">
@@ -120,21 +261,21 @@ const Home = () => {
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
             <div className="max-w-2xl space-y-3">
               
-              {/* Distinct Badge based on movie type */}
+              {/* Distinct Badge */}
               {featuredMovie.isAdminAdded || featuredMovie.isCustom ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/40 text-xs font-black uppercase tracking-wider shadow-sm shadow-[#76b900]/30 animate-pulse">
                   <Star className="w-3.5 h-3.5 fill-[#76b900]" />
-                  <span>⭐ Exclusive Admin Premiere</span>
+                  <span>Exclusive Admin Premiere</span>
                 </div>
-              ) : featuredMovie.category === "upcoming" ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Upcoming Theatrical Release</span>
-                </div>
-              ) : (
+              ) : isMovieReleased(featuredMovie) ? (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76b900]/15 text-[#76b900] border border-[#76b900]/30 text-xs font-bold uppercase tracking-wider">
                   <Film className="w-3.5 h-3.5" />
                   <span>Now Showing in Theatres</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 text-xs font-bold uppercase tracking-wider">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Upcoming Theatrical Release</span>
                 </div>
               )}
 
@@ -179,7 +320,7 @@ const Home = () => {
                   className="px-5 py-3 rounded-lg bg-[#18181f]/90 hover:bg-[#27272a] text-slate-200 border border-[#27272a] font-bold text-sm flex items-center gap-2 transition-all backdrop-blur-sm"
                 >
                   <Play className="w-4 h-4 text-[#76b900]" />
-                  <span>Overview</span>
+                  <span>Movie Details & Trailer</span>
                 </Link>
               </div>
 
@@ -188,11 +329,11 @@ const Home = () => {
         </section>
       )}
 
-      {/* Main Content Area */}
+      {/* Main Content Explorer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         
-        {/* Navigation Tabs: Now Playing / Upcoming / Admin / All */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6 border-b border-[#27272a] pb-4">
+        {/* Navigation Category Tabs */}
+        <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={() => setSelectedCategory("All")}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
@@ -201,11 +342,12 @@ const Home = () => {
                 : "bg-[#121216] text-[#a1a1aa] hover:text-white border border-[#27272a]"
             }`}
           >
+            <Compass className="w-3.5 h-3.5" />
             <span>All Catalog</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               selectedCategory === "All" ? "bg-black/20 text-slate-950" : "bg-[#18181f] text-[#a1a1aa]"
             }`}>
-              {counts.all}
+              {movies.length}
             </span>
           </button>
 
@@ -222,7 +364,7 @@ const Home = () => {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               selectedCategory === "now_playing" ? "bg-black/20 text-slate-950" : "bg-[#18181f] text-[#a1a1aa]"
             }`}>
-              {counts.nowPlaying}
+              {inTheatresList.length}
             </span>
           </button>
 
@@ -239,42 +381,23 @@ const Home = () => {
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
               selectedCategory === "upcoming" ? "bg-black/20 text-slate-950" : "bg-[#18181f] text-[#a1a1aa]"
             }`}>
-              {counts.upcoming}
+              {upcomingList.length}
             </span>
           </button>
-
-          {counts.admin > 0 && (
-            <button
-              onClick={() => setSelectedCategory("admin")}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all ${
-                selectedCategory === "admin"
-                  ? "bg-[#76b900] text-slate-950 font-black shadow-md shadow-[#76b900]/20"
-                  : "bg-[#121216] text-[#76b900] hover:text-white border border-[#76b900]/30"
-              }`}
-            >
-              <Star className="w-3.5 h-3.5 fill-[#76b900]" />
-              <span>Admin Premieres</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                selectedCategory === "admin" ? "bg-black/20 text-slate-950" : "bg-[#76b900]/20 text-[#76b900]"
-              }`}>
-                {counts.admin}
-              </span>
-            </button>
-          )}
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-4 sm:p-5 mb-8 shadow-lg">
+        <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-4 sm:p-5 mb-10 shadow-lg">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
             
-            {/* Search Input (In-memory, never stored or tracked) */}
+            {/* Search Input */}
             <div className="md:col-span-6 relative">
               <Search className="w-4 h-4 text-[#a1a1aa] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search titles, actors, genres..."
+                placeholder="Search movies, actors, directors, genres..."
                 className="w-full bg-[#18181f] border border-[#27272a] rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-[#a1a1aa] focus:outline-none focus:border-[#76b900] transition-colors"
               />
             </div>
@@ -332,161 +455,78 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Section Heading */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
-              {selectedCategory === "upcoming" ? (
-                <>
-                  <Clock className="w-5 h-5 text-amber-400" />
-                  <span>Upcoming Theatrical Releases</span>
-                </>
-              ) : selectedCategory === "admin" ? (
-                <>
-                  <Star className="w-5 h-5 text-[#76b900] fill-[#76b900]" />
-                  <span>Admin Premieres & Features</span>
-                </>
-              ) : selectedCategory === "now_playing" ? (
-                <>
-                  <Film className="w-5 h-5 text-[#76b900]" />
-                  <span>Currently In Theatres</span>
-                </>
-              ) : (
-                <>
-                  <Film className="w-5 h-5 text-[#76b900]" />
-                  <span>Theatrical Releases & Upcoming</span>
-                </>
-              )}
-            </h2>
-            <p className="text-xs text-[#a1a1aa] mt-0.5">
-              Showing {filteredMovies.length} title{filteredMovies.length === 1 ? "" : "s"} • Admin added movies prioritized at top
-            </p>
-          </div>
-        </div>
-
-        {/* Small, Compact Movies Grid (6 cols on xl, 5 cols on lg, 4 cols on md, 3 on sm, 2 on mobile) */}
-        {filteredMovies.length === 0 ? (
-          <div className="text-center py-20 bg-[#121216] rounded-2xl border border-[#27272a] p-8">
-            <Ticket className="w-12 h-12 text-[#a1a1aa] mx-auto mb-3 opacity-60" />
-            <h3 className="text-lg font-bold text-white">No Titles Found</h3>
-            <p className="text-sm text-[#a1a1aa] mt-1 max-w-md mx-auto">
-              No movies currently match your selected filters.
-            </p>
-            <button
-              onClick={() => {
-                setSearch("");
-                setSelectedCategory("All");
-                setSelectedGenre("All");
-                setSelectedLanguage("All");
-              }}
-              className="mt-4 px-5 py-2.5 rounded-lg bg-[#76b900] hover:bg-[#8cd600] text-slate-950 text-xs font-black"
-            >
-              Reset Filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
-            {filteredMovies.map((movie) => {
-              const isAdmin = movie.isAdminAdded || movie.isCustom;
-              const isUpcoming = movie.category === "upcoming";
-
-              return (
-                <div
-                  key={movie._id}
-                  className={`group bg-[#121216] rounded-xl overflow-hidden border transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl flex flex-col justify-between ${
-                    isAdmin 
-                      ? "border-[#76b900]/60 hover:border-[#76b900] hover:shadow-[#76b900]/20" 
-                      : "border-[#27272a] hover:border-[#76b900]/70 hover:shadow-[#76b900]/10"
-                  }`}
-                >
-                  {/* Poster Container */}
-                  <Link to={`/moviedetails/${movie._id}`} className="relative aspect-[2/3] overflow-hidden bg-[#18181f] block">
-                    <img
-                      src={movie.posterUrl}
-                      alt={movie.movieName}
-                      loading="lazy"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-
-                    {/* Prominent Category Badge on Top Left */}
-                    <div className="absolute top-2 left-2 z-10">
-                      {isAdmin ? (
-                        <div className="px-2 py-0.5 rounded-md bg-[#76b900] text-slate-950 text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md shadow-[#76b900]/30">
-                          <Star className="w-2.5 h-2.5 fill-slate-950" />
-                          <span>Admin Premiere</span>
-                        </div>
-                      ) : isUpcoming ? (
-                        <div className="px-2 py-0.5 rounded-md bg-amber-500/90 backdrop-blur-sm text-slate-950 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          <span>Upcoming</span>
-                        </div>
-                      ) : (
-                        <div className="px-1.5 py-0.5 rounded-md bg-black/75 backdrop-blur-sm border border-[#27272a] text-[#76b900] text-[9px] font-bold uppercase tracking-wider">
-                          In Theatres
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Rating badge on Top Right */}
-                    <div className="absolute top-2 right-2 px-1.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-[#f59e0b] text-[10px] font-bold flex items-center gap-0.5 border border-[#f59e0b]/20 shadow-sm">
-                      <Star className="w-3 h-3 fill-[#f59e0b] text-[#f59e0b]" />
-                      <span>{movie.rating}</span>
-                    </div>
-
-                    {/* Certification */}
-                    <div className="absolute bottom-2 left-2 px-1.5 py-0.5 rounded bg-[#18181f]/90 border border-[#27272a] text-white text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm">
-                      {movie.certification || "U/A"}
-                    </div>
-                  </Link>
-
-                  {/* Compact Info Container */}
-                  <div className="p-3 flex-1 flex flex-col justify-between">
-                    <div>
-                      <Link to={`/moviedetails/${movie._id}`}>
-                        <h3 
-                          className="font-bold text-xs sm:text-sm text-white group-hover:text-[#76b900] transition-colors truncate" 
-                          title={movie.movieName}
-                        >
-                          {movie.movieName}
-                        </h3>
-                      </Link>
-                      <p className="text-[10px] text-[#a1a1aa] mt-0.5 truncate">
-                        {movie.genres?.join(", ")}
-                      </p>
-                      <div className="flex items-center gap-1.5 text-[10px] text-[#a1a1aa] mt-1.5 truncate">
-                        <span>{movie.duration}</span>
-                        <span>•</span>
-                        <span>{movie.language}</span>
-                      </div>
-                    </div>
-
-                    {/* Compact Actions */}
-                    <div className="mt-3 pt-2 border-t border-[#27272a] flex items-center gap-1.5">
-                      <Link
-                        to={`/movieshows/${movie._id}`}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-slate-950 text-[11px] font-black text-center shadow-sm transition-all flex items-center justify-center gap-1 ${
-                          isAdmin 
-                            ? "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/30"
-                            : isUpcoming
-                            ? "bg-amber-500 hover:bg-amber-400 text-slate-950"
-                            : "bg-[#76b900] hover:bg-[#8cd600] shadow-[#76b900]/20"
-                        }`}
-                      >
-                        <Ticket className="w-3 h-3" />
-                        <span>{isUpcoming ? "Pre-Book" : "Book"}</span>
-                      </Link>
-                      <Link
-                        to={`/moviedetails/${movie._id}`}
-                        className="py-1.5 px-2 rounded-lg bg-[#18181f] hover:bg-[#27272a] border border-[#27272a] text-slate-300 text-[11px] font-semibold text-center transition-all"
-                      >
-                        Info
-                      </Link>
-                    </div>
-                  </div>
+        {/* ============================================================== */}
+        {/* SECTION 1: MOVIES ALREADY IN THEATRES                          */}
+        {/* ============================================================== */}
+        {(selectedCategory === "All" || selectedCategory === "now_playing") && (
+          <section className="mb-14">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 pb-3 border-b border-[#27272a]">
+              <div>
+                <div className="flex items-center gap-2 text-[#76b900] font-bold text-xs uppercase tracking-widest mb-1">
+                  <Film className="w-4 h-4" />
+                  <span>Box Office Live Screenings</span>
                 </div>
-              );
-            })}
-          </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+                  <span>Now in Theatres</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#76b900]/20 text-[#76b900] border border-[#76b900]/30 font-bold">
+                    {filteredInTheatres.length} Available
+                  </span>
+                </h2>
+              </div>
+              <p className="text-xs text-[#a1a1aa] mt-2 sm:mt-0">
+                Released & screening with real-time seat reservation
+              </p>
+            </div>
+
+            {filteredInTheatres.length === 0 ? (
+              <div className="text-center py-12 bg-[#121216] rounded-2xl border border-[#27272a] p-6 mb-6">
+                <Ticket className="w-10 h-10 text-[#a1a1aa] mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-bold text-white">No In-Theatre titles match your filter criteria.</p>
+                <p className="text-xs text-[#a1a1aa] mt-1">Try resetting the search or genre filters.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                {filteredInTheatres.map(renderMovieCard)}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ============================================================== */}
+        {/* SECTION 2: UPCOMING THEATRICAL RELEASES                        */}
+        {/* ============================================================== */}
+        {(selectedCategory === "All" || selectedCategory === "upcoming") && (
+          <section className="mb-14">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 pb-3 border-b border-[#27272a]">
+              <div>
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-widest mb-1">
+                  <Clock className="w-4 h-4" />
+                  <span>Advance Bookings & Trailers</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
+                  <span>Upcoming Movies</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                    {filteredUpcoming.length} Titles
+                  </span>
+                </h2>
+              </div>
+              <p className="text-xs text-[#a1a1aa] mt-2 sm:mt-0">
+                Future release dates • Explore trailers & advance bookings
+              </p>
+            </div>
+
+            {filteredUpcoming.length === 0 ? (
+              <div className="text-center py-12 bg-[#121216] rounded-2xl border border-[#27272a] p-6">
+                <Clock className="w-10 h-10 text-[#a1a1aa] mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-bold text-white">No upcoming titles match your filter criteria.</p>
+                <p className="text-xs text-[#a1a1aa] mt-1">Try resetting the search or genre filters.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+                {filteredUpcoming.map(renderMovieCard)}
+              </div>
+            )}
+          </section>
         )}
 
       </div>

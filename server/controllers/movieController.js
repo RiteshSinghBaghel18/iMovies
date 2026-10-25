@@ -127,9 +127,9 @@ exports.createMovie = async (req, res) => {
       : [];
 
     const parsedCast = Array.isArray(cast)
-      ? cast
+      ? cast.map((c) => (typeof c === "string" ? { name: c.trim(), character: "", profileUrl: null } : c))
       : typeof cast === "string"
-      ? cast.split(",").map((c) => c.trim())
+      ? cast.split(",").map((c) => ({ name: c.trim(), character: "", profileUrl: null }))
       : [];
 
     const movie = await Movie.create({
@@ -169,7 +169,9 @@ exports.updateMovie = async (req, res) => {
       updates.genres = updates.genres.split(",").map((g) => g.trim());
     }
     if (typeof updates.cast === "string") {
-      updates.cast = updates.cast.split(",").map((c) => c.trim());
+      updates.cast = updates.cast.split(",").map((c) => ({ name: c.trim(), character: "", profileUrl: null }));
+    } else if (Array.isArray(updates.cast)) {
+      updates.cast = updates.cast.map((c) => (typeof c === "string" ? { name: c.trim(), character: "", profileUrl: null } : c));
     }
 
     const movie = await Movie.findByIdAndUpdate(req.params.movieId, updates, {

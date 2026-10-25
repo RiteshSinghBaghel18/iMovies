@@ -127,11 +127,15 @@ const fetchMovieDetail = async (tmdbId, category = "now_playing") => {
     const credits = creditsRes.data;
     const videos  = videosRes.data;
 
-    // Extract top-5 cast names
+    // Extract top cast members with photos and character names
     const cast = credits.cast
-      ?.slice(0, 5)
-      .map((c) => c.name)
-      .filter(Boolean) || [];
+      ?.slice(0, 8)
+      .map((c) => ({
+        name: c.name,
+        character: c.character || "",
+        profileUrl: c.profile_path ? `https://image.tmdb.org/t/p/w185${c.profile_path}` : null,
+      }))
+      .filter((c) => c && c.name) || [];
 
     // Extract director
     const director =

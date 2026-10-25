@@ -1,102 +1,107 @@
-# iMovies — Modern Cinema & Ticket Booking Platform
+# iMovies - Cinema Ticket Booking Platform
 
-A full-stack cinema booking web application built on the **MERN** stack (MongoDB, Express.js, React.js, Node.js) with real-time **Socket.io** WebSocket seat synchronization, 10-minute temporary seat locking, printable QR digital passes, Razorpay test payment processing, automated cron services, and an executive administration suite.
+iMovies is a full-stack movie ticketing application built with the MERN stack (MongoDB, Express, React, Node.js). It provides real-time seat selection via WebSockets, online booking workflows, digital ticket passes with QR codes, and an administrative dashboard to manage movies, cinema halls, and showtimes.
 
-Styled in a signature **NVIDIA Green (`#76b900`), Pitch Black, and Crisp White** cinema palette.
-
----
-
-## Key Highlights & Features
-
-### 1. Frontend (React 18 + Vite)
-- **Code-Splitting & Lazy Loading**: All pages use `React.lazy` and `Suspense` for sub-second page loads.
-- **Cinematic High-Tech Design**: Signature NVIDIA green (`#76b900`), pitch black (`#000000`), and clean white aesthetic with curved auditorium screens and responsive layout.
-- **Real-Time Seat Picker (`/seatslug/:showId`)**:
-  - Multi-tier seat map: **Balcony (VIP)**, **Middle (Premium)**, and **Lower (Standard)**.
-  - Live WebSocket synchronization with **Socket.io** across concurrent browsers.
-  - 10-minute temporary seat hold countdown with live progress alerts.
-- **Digital Printable Passes & QR Tickets**: Instant modal with scannable QR codes, seat breakdowns, barcode styling, and print/PDF support.
-- **Payment & Checkout Simulation**: Razorpay gateway checkout supporting Cards, UPI VPAs, and Net Banking with celebration confetti.
-- **User Authentication & Email Verification**:
-  - 6-digit OTP and direct email verification link dispatch via Brevo (Sendinblue).
-  - Watchlist management, booking history, and one-click reservation cancellation.
-- **Admin Management Portal (`/admin`)**:
-  - Executive overview metrics: Total Revenue, Total Bookings, Movies, Theatres, Occupancy.
-  - Movie catalog creator & TMDB live synchronizer (`/addmovie`).
-  - Auditorium builder with seat pricing tiers (`/addtheatre`).
-  - Showtime scheduler linking titles, auditoriums, dates, and times (`/addshow`).
-  - Sub-admin access delegator (`/addadmin`).
-  - Transaction ledger and refund management (`/admin/transactions`).
-
-### 2. Backend (Node.js + Express.js)
-- **RESTful MVC Architecture**: Structured separation into Controllers, Models, Routes, Middleware, and Services.
-- **Dynamic CORS & Vercel Compatibility**: Handles cross-origin requests across local development and production domains.
-- **Automatic Background Jobs**:
-  - `node-cron` seat lock cleaner running every 30 seconds to release abandoned holds.
-  - Automated showtime email reminder dispatcher via Nodemailer / Brevo.
-  - Automated 6-hour TMDB movie catalog refresher.
-- **WebSocket Gateway**: Dedicated show rooms (`show_<showId>`) for instant seat reservation, locking, and release broadcasts.
+The user interface is designed around an NVIDIA Green (#76b900), deep black, and clean white color palette, with support for both dark and light display modes.
 
 ---
 
-## Project Structure
+## Features
 
-```
-iMovies/
-├── client/                     # Frontend (React 18 + Vite + Tailwind CSS)
-│   ├── src/
-│   │   ├── components/         # Header, Footer, Loader, DigitalTicketModal, PaymentModal, AdminTransactions
-│   │   ├── context/            # AuthContext, SocketContext
-│   │   ├── hooks/              # useFetch custom hook
-│   │   ├── pages/              # Landing, Home, MovieDetails, MovieShows, SeatMap, Bookings, Profile, AdminDashboard
-│   │   ├── utils/              # Axios API instance with JWT interceptors, dateTime helpers
-│   │   ├── App.jsx             # React Router configuration with lazy loading
-│   │   └── main.jsx
-│   ├── tailwind.config.js      # NVIDIA Green, Black & White Theme
-│   └── package.json
-│
-└── server/                     # Backend (Node.js + Express.js REST API)
-    ├── config/                 # Email and environment configuration
-    ├── controllers/            # Auth, Movie, Theatre, Show, Booking, Payment, Review
-    ├── middlewares/            # JWT authentication & admin protection
-    ├── models/                 # User, Admin, Movie, Theatre, Show, Booking, Review
-    ├── routes/                 # Express API routes
-    ├── services/               # Brevo transactional email & TMDB market sync
-    ├── utils/                  # Seat cleanup cron, reminder cron, mailer, seedData
-    ├── server.js               # Entry point with HTTP + Socket.io server
-    └── .env                    # MONGO_URI, PORT, JWT_SECRET, TMDB, RAZORPAY, BREVO
-```
+### Public and Customer Experience
+- Split Catalog: Movies are organized into two distinct sections on the home catalog:
+  - Now in Theatres: Active screenings currently running in cinema halls, with admin-added titles prioritized.
+  - Upcoming Releases: Scheduled future releases with release dates and advance details.
+- Movie Details with Ambient Video Trailers:
+  - When opening a movie overview, the official trailer plays automatically in the background behind the title and poster.
+  - If a trailer is not available, the interface smoothly falls back to the movie backdrop image.
+  - Audio can be toggled on or off directly from the header banner.
+- Cast and Crew Profiles: Detailed headshot photos, actor names, and character roles for featured cast members.
+- Interactive Seating Selection:
+  - Visual auditorium map divided into Balcony, Middle, and Lower seating tiers.
+  - Real-time seat synchronization using Socket.io across multiple connected devices.
+  - Ten-minute temporary seat holding timer to prevent double-booking.
+- Digital Ticket Passes:
+  - Generates a scannable digital ticket pass with booking confirmation details.
+  - Includes a QR code and one-click print or save to PDF functionality.
+- Customer Accounts and Watchlist:
+  - Account registration with email verification codes.
+  - Personal booking history and personal watchlist management.
+
+### Administration Portal
+- Real-time platform analytics including total revenue, active shows, and platform reservations.
+- Movie Catalog Management: Add custom titles or sync with the TMDB database.
+- Theatre Management: Register cinema halls with customizable seating capacities and pricing tiers.
+- Showtime Scheduling: Assign movies to specific auditoriums, dates, and times.
+- Refund Management: Review and process Razorpay payment refunds with automatic inventory release.
 
 ---
 
-## Default Credentials (Pre-Seeded)
+## Architecture and Tech Stack
 
-| Role | Email | Password | Access Level |
-|---|---|---|---|
-| **Movie Fan (User)** | `demo@imovies.com` | `user123` | Browsing, Booking, Watchlist, Reviews, Tickets |
-| **Movie Fan (Test)** | `user@imovies.com` | `user1234` | Browsing, Booking, Watchlist, Reviews, Tickets |
-| **Administrator** | `admin@imovies.com` | `admin1234` / `admin123` | Full Dashboard, Analytics, Movie/Theatre/Show CRUD, Transactions |
+- Frontend:
+  - React 18 with Vite
+  - Tailwind CSS with NVIDIA Green theme tokens
+  - Lucide React iconography
+  - Socket.io Client for real-time WebSocket communication
+- Backend:
+  - Node.js and Express.js REST API
+  - MongoDB with Mongoose ODM
+  - Socket.io for WebSocket room events
+  - JSON Web Tokens (JWT) for authentication
+  - Nodemailer and Brevo for transactional email delivery
+  - Node-cron for background seat hold expiration cleanup
 
 ---
 
 ## Getting Started
 
-### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v18+)
-- [MongoDB](https://www.mongodb.com/) running locally on `mongodb://localhost:27017` (or MongoDB Atlas connection URI)
+### Prerequisites
+- Node.js version 18 or higher
+- MongoDB instance running locally or a MongoDB Atlas connection URI
 
-### 2. Backend Setup
-```bash
-cd server
-npm install
-node server.js
-```
-The server will initialize on port 5000, verify default admin credentials, and connect to MongoDB.
+### Backend Setup
+1. Open a terminal in the `server` directory:
+   ```bash
+   cd server
+   npm install
+   ```
+2. Configure your environment variables by creating a `.env` file based on `.env.example`:
+   ```
+   PORT=5000
+   MONGO_URI=mongodb://127.0.0.1:27017/imovies
+   JWT_SECRET=your_jwt_secret_here
+   CLIENT_URL=http://localhost:5173
+   TMDB_API_KEY=your_tmdb_api_key
+   RAZORPAY_KEY_ID=your_razorpay_key_id
+   RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+   BREVO_API_KEY=your_brevo_api_key
+   SENDER_EMAIL=your_verified_sender_email@domain.com
+   SENDER_NAME=iMovies
+   ```
+3. Start the backend service:
+   ```bash
+   node server.js
+   ```
 
-### 3. Frontend Setup
-```bash
-cd client
-npm install
-npm run dev
-```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+### Frontend Setup
+1. Open a terminal in the `client` directory:
+   ```bash
+   cd client
+   npm install
+   ```
+2. Create a `.env` file in the `client` directory:
+   ```
+   VITE_RAZORPAY_KEY_ID=your_razorpay_key_id
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and navigate to `http://localhost:5173`.
+
+---
+
+## License
+
+This project is licensed under the MIT License.
