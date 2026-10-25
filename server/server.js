@@ -111,9 +111,15 @@ io.on("connection", (socket) => {
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
+  const mem = process.memoryUsage();
   res.json({
     status: "ok",
     app: "iMovies API Server",
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+    },
     timestamp: new Date().toISOString(),
     dbState: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
     tmdbKeyConfigured: !!process.env.TMDB_API_KEY,

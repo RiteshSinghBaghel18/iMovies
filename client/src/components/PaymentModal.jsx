@@ -12,7 +12,8 @@ import {
   CheckCircle2,
   CreditCard,
   Smartphone,
-  Info
+  Info,
+  ArrowRight
 } from "lucide-react";
 import { toast } from "react-toastify";
 
