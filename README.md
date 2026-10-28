@@ -6,6 +6,17 @@ The user interface is designed around an Green (#76b900), deep black, and clean 
 
 ---
 
+## 📁 Project Documentation
+
+Comprehensive architectural specifications, team responsibilities, and visual workflows are maintained in the [`docs/`](docs/) directory:
+
+- [System Architecture and Design](docs/architecture.md): In-depth breakdown of the MVC pattern implementation, backend Mongoose models, controller logic, API response views, and the complete request lifecycle.
+- [Team Roles and Responsibilities](docs/roles.md): Contribution matrix outlining team functional roles, responsibilities, and key module deliverables.
+- [Database Entity-Relationship (ER) Diagram](docs/diagrams/er-diagram.md): Mermaid.js diagram illustrating database models, keys, cardinalities, and the real-time embedded ticket grid.
+- [User Flow and Journey Diagram](docs/diagrams/user-flow.md): Flowchart detailing the customer booking experience from discovery to digital ticket issuance, alongside administrative workflows.
+
+---
+
 ## Features
 
 ### Public and Customer Experience
