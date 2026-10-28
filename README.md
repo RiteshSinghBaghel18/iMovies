@@ -1,4 +1,4 @@
-# iMovies - Cinema Ticket Booking Platform
+# iMovies - Movie ticket booking made simple.
 
 iMovies is a full-stack movie ticketing application built with the MERN stack (MongoDB, Express, React, Node.js). It provides real-time seat selection via WebSockets, online booking workflows, digital ticket passes with QR codes, and an administrative dashboard to manage movies, cinema halls, and showtimes.
 
