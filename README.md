@@ -6,7 +6,7 @@ The user interface is designed around an Green (#76b900), deep black, and clean 
 
 ---
 
-## 📁 Project Documentation
+## Project Documentation
 
 Comprehensive architectural specifications, team responsibilities, and visual workflows are maintained in the [`docs/`](docs/) directory:
 
